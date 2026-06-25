@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>RutaExpress · Panel Admin</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --bg:#F2F4F7;--card:#FFFFFF;--border:#E2E8F0;--accent:#2563EB;--onAccent:#fff;
+    --green:#22C55E;--red:#EF4444;--orange:#FF8A00;--blue:#2563EB;
+    --tPrimary:#1E293B;--tSecondary:#64748B;--tMuted:#94A3B8;--muted:#E2E8F0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--tPrimary);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding-bottom:env(safe-area-inset-bottom)}
+  h1,h2,h3,p{margin:0}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  img{display:block}
+  .hidden{display:none!important}
+
+  /* Login */
+  #login{min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:14px;padding:32px;text-align:center}
+  #login .iconBox{width:80px;height:80px;background:var(--card);border-radius:24px;
+    display:flex;align-items:center;justify-content:center;font-size:40px}
+  #login h1{font-size:28px;font-weight:900}
+  #login .sub{font-size:12px;color:var(--tSecondary);letter-spacing:2px}
+  #login input{width:100%;max-width:340px;background:var(--card);border:1.5px solid var(--border);
+    border-radius:14px;padding:15px;font-size:15px;color:var(--tPrimary)}
+  #login button{width:100%;max-width:340px;background:var(--accent);color:#fff;border-radius:14px;
+    padding:16px;font-size:16px;font-weight:800}
+  #login button:disabled{background:var(--muted)}
+  #login .hint{font-size:11px;color:var(--tMuted)}
+
+  /* Header + tabs */
+  header{display:flex;justify-content:space-between;align-items:center;padding:18px 16px 12px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .logo{width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px}
+  .brand .name{font-size:17px;font-weight:800}
+  .brand .tag{font-size:11px;color:var(--tSecondary)}
+  .logout{background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:8px 14px;font-size:13px;color:var(--tSecondary);font-weight:600}
+  .tabs{display:flex;gap:8px;padding:0 16px 14px}
+  .tab{flex:1;display:flex;justify-content:center;align-items:center;gap:5px;background:var(--card);
+    border:1px solid var(--border);border-radius:10px;padding:10px 4px;font-size:12px;
+    color:var(--tSecondary);font-weight:600}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  .tabBadge{background:var(--orange);color:#fff;border-radius:9px;min-width:18px;height:18px;
+    padding:0 5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
+
+  .content{padding:0 16px 48px;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+  .sectionTitle{font-size:12px;font-weight:800;color:var(--tMuted);text-transform:uppercase;
+    letter-spacing:.6px;margin:8px 0 2px}
+
+  /* Cards */
+  .metricRow{display:flex;gap:10px}
+  .metricCard{flex:1;background:var(--card);border:1px solid var(--border);border-radius:16px;
+    padding:18px 0;text-align:center}
+  .metricValue{font-size:34px;font-weight:900}
+  .metricLabel{font-size:11px;color:var(--tSecondary);margin-top:4px;font-weight:600}
+  .miniRow{display:flex;gap:8px}
+  .miniCard{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;
+    padding:12px 0;text-align:center}
+  .miniValue{font-size:20px;font-weight:900}
+  .miniLabel{font-size:10px;color:var(--tMuted);margin-top:3px;text-transform:uppercase;
+    letter-spacing:.5px;font-weight:700}
+  .alertCard{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:#FF8A0018;border:1px solid #FF8A0055;border-radius:14px;padding:14px;width:100%}
+  .alertCard .txt{font-size:13px;font-weight:700;text-align:left}
+  .alertCard .cta{font-size:13px;font-weight:800;color:var(--orange)}
+
+  .topCard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:0 12px}
+  .topRow{display:flex;align-items:center;gap:10px;padding:11px 0;width:100%}
+  .topRow+.topRow{border-top:1px solid var(--border)}
+  .topMedal{font-size:18px;width:22px;text-align:center}
+  .topName{flex:1;font-size:14px;font-weight:700;text-align:left}
+  .topCount{font-size:13px;font-weight:800;color:var(--accent)}
+  .empty{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;
+    text-align:center;font-size:13px;color:var(--tSecondary)}
+
+  /* User row */
+  .fila{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);
+    border-radius:14px;padding:12px;width:100%;text-align:left}
+  .avatar{width:44px;height:44px;border-radius:50%;background:#2563EB22;color:var(--accent);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;
+    object-fit:cover;flex-shrink:0}
+  .filaInfo{flex:1;min-width:0}
+  .filaNombre{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .filaMeta{font-size:12px;color:var(--tSecondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .chev{font-size:22px;color:var(--tMuted)}
+
+  /* Segmented + search */
+  .segmented{display:flex;background:var(--muted);border-radius:12px;padding:4px;gap:4px}
+  .segment{flex:1;padding:9px 0;border-radius:9px;font-size:13px;font-weight:600;color:var(--tSecondary)}
+  .segment.active{background:var(--card);color:var(--tPrimary);font-weight:800;
+    box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .search{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);
+    border-radius:12px;padding:0 12px;height:44px}
+  .search input{flex:1;border:none;outline:none;font-size:14px;background:none;color:var(--tPrimary)}
+
+  /* Actividad */
+  .actCard{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);
+    border-radius:14px;padding:14px}
+  .actMain{flex:1;min-width:0}
+  .actTitle{font-size:14px;font-weight:700}
+  .actMeta{font-size:12px;color:var(--tSecondary);margin-top:3px}
+  .badge{border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap}
+  .itemCard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;
+    display:flex;flex-direction:column;gap:6px}
+  .cancelHeader{display:flex;justify-content:space-between;align-items:center}
+  .trash{padding:6px;font-size:15px;background:none}
+
+  /* Modal */
+  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;
+    justify-content:center;z-index:50}
+  .sheet{background:var(--bg);border-radius:24px 24px 0 0;padding:10px 16px 24px;width:100%;
+    max-width:560px;max-height:92vh;overflow-y:auto}
+  .grip{width:40px;height:4px;border-radius:2px;background:var(--muted);margin:0 auto 12px}
+  .modalTop{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .modalName{font-size:18px;font-weight:800}
+  .modalRole{font-size:12px;color:var(--tSecondary);margin-top:2px}
+  .fotosRow{display:flex;gap:10px;margin-bottom:10px}
+  .foto{flex:1;text-align:center}
+  .foto .img{width:100%;height:84px;border-radius:12px;object-fit:cover;background:var(--muted);
+    display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid var(--border)}
+  .foto .perfilImg{width:70px;height:70px;border-radius:50%;margin:0 auto;object-fit:cover;
+    border:2px solid #2563EB44;background:var(--muted);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .foto .lbl{font-size:10px;color:var(--tSecondary);font-weight:600;margin-top:4px}
+  .datos{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:0 14px;margin-bottom:14px}
+  .datoRow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0}
+  .datoRow+.datoRow{border-top:1px solid var(--border)}
+  .datoK{font-size:12px;color:var(--tMuted);font-weight:700}
+  .datoV{flex:1;font-size:13px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .acciones{display:flex;flex-wrap:wrap;gap:8px}
+  .accionBtn{flex:1 1 46%;min-width:120px;border:1px solid;border-radius:12px;padding:12px;
+    font-size:14px;font-weight:700;text-align:center}
+  .bAprobar{background:#22C55E18;border-color:#22C55E55;color:var(--green)}
+  .bRechazar{background:#EF444414;border-color:#EF444444;color:var(--red)}
+  .bRenovar{background:#2563EB14;border-color:#2563EB55;color:var(--accent)}
+  .bSuspender{background:#2563EB14;border-color:#2563EB44;color:var(--blue)}
+  .bEliminar{background:#EF444414;border-color:#EF444444;color:var(--red)}
+  .cerrar{margin-top:14px;padding:14px;width:100%;text-align:center;font-size:14px;
+    font-weight:700;color:var(--tSecondary)}
+  .loading{padding:60px;text-align:center;color:var(--tSecondary)}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login">
+  <div class="iconBox">🔐</div>
+  <h1>Panel Admin</h1>
+  <div class="sub">RUTAEXPRESS · MONTALVO</div>
+  <input id="pwd" type="password" placeholder="Contraseña del administrador" autocomplete="current-password" />
+  <button id="loginBtn">Entrar →</button>
+  <div class="hint">Solo el administrador de RutaExpress tiene acceso</div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app" class="hidden">
+  <header>
+    <div class="brand">
+      <div class="logo">R</div>
+      <div><div class="name">RutaExpress</div><div class="tag">Panel admin · Montalvo</div></div>
+    </div>
+    <button class="logout" id="logoutBtn">Salir</button>
+  </header>
+  <div class="tabs" id="tabs"></div>
+  <div class="content" id="content"></div>
+</div>
+
+<div id="modalRoot"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://cxbybueipinbbkydqoza.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4YnlidWVpcGluYmJreWRxb3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTYzODMsImV4cCI6MjA5NDg3MjM4M30.cTEHWlMQV0Ck144zJ2HI3LmpF_c03orApk2og5OHlrk';
+const ADMIN_EMAIL = 'samiralejandroduche48@gmail.com';
+const DIA = 86400000;
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// --- estado ---
+let tab = 'resumen', subUsuarios = 'conductores', subActividad = 'viajes', busqueda = '';
+let conductores = [], pasajeros = [], viajes = [], cancelaciones = [], stats = {conductor:{},pasajero:{}};
+let cargando = false;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fechaEC = d => new Date(d).toLocaleDateString('es-EC');
+const horaEC = d => new Date(d).toLocaleString('es-EC');
+
+// --- auth ---
+sb.auth.getSession().then(({data}) => { if (data.session?.user?.email === ADMIN_EMAIL) entrar(); });
+
+$('loginBtn').onclick = async () => {
+  const password = $('pwd').value;
+  if (!password) return;
+  $('loginBtn').disabled = true; $('loginBtn').textContent = '...';
+  const {data, error} = await sb.auth.signInWithPassword({email: ADMIN_EMAIL, password});
+  $('loginBtn').disabled = false; $('loginBtn').textContent = 'Entrar →';
+  if (error || data.user?.email !== ADMIN_EMAIL) { alert('Contraseña incorrecta'); $('pwd').value=''; return; }
+  entrar();
+};
+$('pwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+$('logoutBtn').onclick = async () => { await sb.auth.signOut(); $('app').classList.add('hidden'); $('login').classList.remove('hidden'); };
+
+function entrar(){ $('login').classList.add('hidden'); $('app').classList.remove('hidden'); cargarTodo(); }
+
+// --- datos --- (bajo volumen: se carga todo y se deriva en cliente)
+async function cargarTodo(){
+  cargando = true; render();
+  const [c,p,v,can] = await Promise.all([
+    sb.from('conductores').select('*').order('fecha_registro',{ascending:false}),
+    sb.from('pasajeros').select('*').order('fecha_registro',{ascending:false}),
+    sb.from('viajes').select('id,origen,destino,fecha_hora,tarifa,estado,conductor_id,pasajero_id').order('fecha_hora',{ascending:false}),
+    sb.from('cancelaciones').select('*, viaje:viajes(origen,destino)').order('fecha_hora',{ascending:false}).limit(100),
+  ]);
+  conductores = c.data || []; pasajeros = p.data || []; viajes = v.data || []; cancelaciones = can.data || [];
+  const cc = {}, pp = {};
+  const sumar = (m,id,e) => { if(!id)return; m[id]=m[id]||{total:0,completados:0}; m[id].total++; if(e==='COMPLETADO')m[id].completados++; };
+  viajes.forEach(x => { sumar(cc,x.conductor_id,x.estado); sumar(pp,x.pasajero_id,x.estado); });
+  stats = {conductor:cc, pasajero:pp};
+  cargando = false; render();
+}
+
+// --- acciones ---
+function sumarUnMes(desde){
+  const base = desde && new Date(desde) > new Date() ? new Date(desde) : new Date();
+  base.setMonth(base.getMonth()+1); return base;
+}
+async function cambiarEstadoConductor(c, estado){
+  const msg = {APROBADO:`¿Aprobar a ${c.nombre_completo}? Se activa 1 mes de servicio.`,
+    RECHAZADO:`¿Rechazar a ${c.nombre_completo}?`, SUSPENDIDO:`¿Suspender a ${c.nombre_completo}?`}[estado];
+  if (!confirm(msg)) return;
+  const {error} = await sb.from('conductores').update({
+    estado, verificado: estado==='APROBADO',
+    fecha_aprobacion: estado==='APROBADO' ? new Date().toISOString() : null,
+    ...(estado==='APROBADO' ? {suscripcion_vence: sumarUnMes().toISOString()} : {}),
+  }).eq('id', c.id);
+  if (error) alert('No se pudo actualizar el estado'); else { cerrarModal(); cargarTodo(); }
+}
+async function cambiarEstadoPasajero(p, estado){
+  if (!confirm(`¿Cambiar estado de ${p.nombre_completo} a ${estado}?`)) return;
+  const {error} = await sb.from('pasajeros').update({
+    estado, verificado: estado==='APROBADO',
+    fecha_aprobacion: estado==='APROBADO' ? new Date().toISOString() : null,
+  }).eq('id', p.id);
+  if (!error) { cerrarModal(); cargarTodo(); }
+}
+async function renovar(c){
+  const nueva = sumarUnMes(c.suscripcion_vence);
+  if (!confirm(`¿Sumar 1 mes a ${c.nombre_completo}? Vigente hasta el ${nueva.toLocaleDateString('es-EC')}.`)) return;
+  const {error} = await sb.from('conductores').update({suscripcion_vence: nueva.toISOString()}).eq('id', c.id);
+  if (error) alert('No se pudo renovar'); else { alert(`✓ Renovada. Vence el ${nueva.toLocaleDateString('es-EC')}`); cerrarModal(); cargarTodo(); }
+}
+async function eliminar(id, tabla){
+  if (!confirm('¿Estás seguro? Esta acción no se puede deshacer.')) return;
+  const {error} = await sb.from(tabla).delete().eq('id', id);
+  if (error) alert('No se pudo eliminar: ' + error.message); else { cerrarModal(); cargarTodo(); }
+}
+
+// --- helpers ---
+function infoSuscripcion(vence){
+  if (!vence) return null;
+  const dias = Math.ceil((new Date(vence) - new Date()) / DIA);
+  if (dias < 0) return {dias, texto:`Vencida hace ${-dias}d`, color:'var(--red)', vencida:true};
+  if (dias <= 3) return {dias, texto: dias===0?'Vence hoy':`Vence en ${dias}d`, color:'var(--orange)', porVencer:true};
+  return {dias, texto:`Vence en ${dias}d`, color:'var(--green)'};
+}
+const estadoColor = e => ({APROBADO:'var(--green)',RECHAZADO:'var(--red)',SUSPENDIDO:'var(--blue)',PENDIENTE:'var(--orange)'}[e]||'var(--tSecondary)');
+const viajeColor = e => ({COMPLETADO:'var(--green)','EN CURSO':'var(--blue)',SOLICITADO:'var(--orange)',CANCELADO:'var(--red)'}[e]||'var(--tSecondary)');
+const countViajes = (dias,estado) => viajes.filter(v => (!estado||v.estado===estado) && Date.now()-new Date(v.fecha_hora).getTime() <= dias*DIA).length;
+const countCancel = dias => cancelaciones.filter(c => Date.now()-new Date(c.fecha_hora).getTime() <= dias*DIA).length;
+
+function topMes(){
+  const corte = Date.now() - 30*DIA, cc={}, pp={};
+  viajes.forEach(v => {
+    if (v.estado!=='COMPLETADO' || new Date(v.fecha_hora).getTime() < corte) return;
+    if (v.conductor_id) cc[v.conductor_id]=(cc[v.conductor_id]||0)+1;
+    if (v.pasajero_id) pp[v.pasajero_id]=(pp[v.pasajero_id]||0)+1;
+  });
+  const top = (m,lista,tipo) => Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,3)
+    .map(([id,n]) => { const u=lista.find(x=>x.id===id); return u?{u,n,tipo}:null; }).filter(Boolean);
+  return {conductores: top(cc,conductores,'conductor'), pasajeros: top(pp,pasajeros,'pasajero')};
+}
+const coincide = u => {
+  const q = busqueda.trim().toLowerCase();
+  if (!q) return true;
+  return [u.nombre_completo,u.cedula,u.placa,u.email].filter(Boolean).some(x => String(x).toLowerCase().includes(q));
+};
+
+// --- componentes HTML ---
+const avatar = (uri,nombre,size=44) => uri
+  ? `<img class="avatar" style="width:${size}px;height:${size}px" src="${esc(uri)}" onerror="this.outerHTML='<div class=avatar style=width:${size}px;height:${size}px>${esc((nombre||'?')[0].toUpperCase())}</div>'">`
+  : `<div class="avatar" style="width:${size}px;height:${size}px">${esc((nombre||'?')[0].toUpperCase())}</div>`;
+
+function filaUsuario(u, tipo){
+  const s = tipo==='conductor' ? infoSuscripcion(u.suscripcion_vence) : null;
+  const meta = tipo==='conductor' ? `Placa ${esc(u.placa||'—')}` : `CI ${esc(u.cedula||'—')}`;
+  const sTxt = s ? `  ·  <span style="color:${s.color};font-weight:700">${s.texto}</span>` : '';
+  return `<button class="fila" onclick="abrirDetalle('${u.id}','${tipo}')">
+    ${avatar(u.foto_perfil_url,u.nombre_completo)}
+    <div class="filaInfo"><div class="filaNombre">${esc(u.nombre_completo)}</div>
+      <div class="filaMeta">${meta}${sTxt}</div></div>
+    <div class="dot" style="background:${estadoColor(u.estado)}"></div><div class="chev">›</div>
+  </button>`;
+}
+function topLista(items){
+  if (!items.length) return `<div class="topCard"><div class="empty" style="border:none">Aún no hay viajes este mes</div></div>`;
+  return `<div class="topCard">${items.map((it,i) => `
+    <button class="topRow" onclick="abrirDetalle('${it.u.id}','${it.tipo}')">
+      <span class="topMedal">${['🥇','🥈','🥉'][i]}</span>
+      ${avatar(it.u.foto_perfil_url,it.u.nombre_completo,36)}
+      <span class="topName">${esc(it.u.nombre_completo)}</span>
+      <span class="topCount">${it.n} ${it.n===1?'viaje':'viajes'}</span>
+    </button>`).join('')}</div>`;
+}
+
+// --- render principal ---
+function render(){
+  const pendC = conductores.filter(c=>c.estado==='PENDIENTE');
+  const pendP = pasajeros.filter(p=>p.estado==='PENDIENTE');
+  const pendTotal = pendC.length + pendP.length;
+
+  const TABS = [
+    {k:'resumen',l:'Resumen'},{k:'solicitudes',l:'Solicitudes',badge:pendTotal},
+    {k:'usuarios',l:'Usuarios'},{k:'actividad',l:'Actividad'},
+  ];
+  $('tabs').innerHTML = TABS.map(t => `<button class="tab ${tab===t.k?'active':''}" onclick="irTab('${t.k}')">
+    ${t.l}${t.badge?`<span class="tabBadge">${t.badge}</span>`:''}</button>`).join('');
+
+  if (cargando) { $('content').innerHTML = `<div class="loading">Cargando…</div>`; return; }
+  let h = '';
+
+  if (tab === 'resumen') {
+    if (pendTotal) h += `<button class="alertCard" onclick="irTab('solicitudes')">
+      <span class="txt">${pendTotal} ${pendTotal===1?'solicitud pendiente':'solicitudes pendientes'} de aprobación</span>
+      <span class="cta">Revisar ›</span></button>`;
+    h += `<div class="sectionTitle">Viajes realizados</div>
+      <div class="metricRow">
+        <div class="metricCard"><div class="metricValue" style="color:var(--accent)">${countViajes(7,'COMPLETADO')}</div><div class="metricLabel">Esta semana</div></div>
+        <div class="metricCard"><div class="metricValue" style="color:var(--accent)">${countViajes(30,'COMPLETADO')}</div><div class="metricLabel">Este mes</div></div></div>
+      <div class="sectionTitle">Cancelaciones</div>
+      <div class="metricRow">
+        <div class="metricCard"><div class="metricValue" style="color:var(--red)">${countCancel(7)}</div><div class="metricLabel">Esta semana</div></div>
+        <div class="metricCard"><div class="metricValue" style="color:var(--red)">${countCancel(30)}</div><div class="metricLabel">Este mes</div></div></div>`;
+    const top = topMes();
+    h += `<div class="sectionTitle">🏆 Top conductores del mes</div>${topLista(top.conductores)}`;
+    h += `<div class="sectionTitle">🏆 Top pasajeros del mes</div>${topLista(top.pasajeros)}`;
+    const porVencer = conductores.filter(c => { const s=infoSuscripcion(c.suscripcion_vence); return c.estado==='APROBADO'&&s&&(s.porVencer||s.vencida); }).length;
+    h += `<div class="sectionTitle">Estado general</div><div class="miniRow">
+      <div class="miniCard"><div class="miniValue">${conductores.filter(c=>c.estado==='APROBADO').length}</div><div class="miniLabel">Conductores</div></div>
+      <div class="miniCard"><div class="miniValue">${pasajeros.filter(p=>p.estado==='APROBADO').length}</div><div class="miniLabel">Pasajeros</div></div>
+      <div class="miniCard"><div class="miniValue" style="color:var(--red)">${porVencer}</div><div class="miniLabel">Por vencer</div></div></div>`;
+  }
+
+  if (tab === 'solicitudes') {
+    if (!pendTotal) h += `<div class="empty">No hay solicitudes pendientes 🎉</div>`;
+    else {
+      if (pendC.length) h += `<div class="sectionTitle">Conductores (${pendC.length})</div>` + pendC.map(c=>filaUsuario(c,'conductor')).join('');
+      if (pendP.length) h += `<div class="sectionTitle">Pasajeros (${pendP.length})</div>` + pendP.map(p=>filaUsuario(p,'pasajero')).join('');
+    }
+  }
+
+  if (tab === 'usuarios') {
+    h += `<div class="segmented">
+      <button class="segment ${subUsuarios==='conductores'?'active':''}" onclick="setSubU('conductores')">Conductores</button>
+      <button class="segment ${subUsuarios==='pasajeros'?'active':''}" onclick="setSubU('pasajeros')">Pasajeros</button></div>
+      <div class="search">🔍<input id="buscar" value="${esc(busqueda)}" placeholder="Buscar por nombre, cédula, placa…" autocapitalize="none"></div>`;
+    const lista = (subUsuarios==='conductores'?conductores:pasajeros).filter(u=>u.estado!=='PENDIENTE').filter(coincide);
+    const tipo = subUsuarios==='conductores'?'conductor':'pasajero';
+    h += lista.length ? lista.map(u=>filaUsuario(u,tipo)).join('')
+      : `<div class="empty">${busqueda?'Sin resultados para tu búsqueda':'No hay usuarios aún'}</div>`;
+  }
+
+  if (tab === 'actividad') {
+    h += `<div class="segmented">
+      <button class="segment ${subActividad==='viajes'?'active':''}" onclick="setSubA('viajes')">Viajes</button>
+      <button class="segment ${subActividad==='cancelaciones'?'active':''}" onclick="setSubA('cancelaciones')">Cancelaciones</button></div>`;
+    if (subActividad === 'viajes') {
+      h += viajes.length ? viajes.slice(0,40).map(v => `<div class="actCard">
+        <div class="actMain"><div class="actTitle">${esc(v.origen)} → ${esc(v.destino)}</div>
+          <div class="actMeta">${fechaEC(v.fecha_hora)} · $${esc(v.tarifa)}</div></div>
+        <span class="badge" style="background:${viajeColor(v.estado)}1A;color:${viajeColor(v.estado)}">${esc(v.estado)}</span>
+        <button class="trash" onclick="eliminar('${v.id}','viajes')">🗑️</button></div>`).join('')
+        : `<div class="empty">No hay viajes registrados</div>`;
+    } else {
+      h += cancelaciones.length ? cancelaciones.map(c => `<div class="itemCard">
+        <div class="cancelHeader">
+          <span class="badge" style="background:${(c.cancelado_por==='conductor'?'var(--orange)':'var(--blue)')};opacity:.12"></span>
+          <span class="badge" style="background:${c.cancelado_por==='conductor'?'#FF8A001A':'#2563EB1A'};color:${c.cancelado_por==='conductor'?'var(--orange)':'var(--blue)'}">${c.cancelado_por==='conductor'?'Conductor':'Pasajero'}</span>
+          <span class="actMeta">${horaEC(c.fecha_hora)}</span></div>
+        <div style="font-size:14px;font-weight:600">“${esc(c.motivo)}”</div>
+        <div class="actMeta">Pasajero: ${esc(c.pasajero_nombre||'—')} · Conductor: ${esc(c.conductor_nombre||'—')}</div>
+        ${c.viaje?`<div class="actMeta">${esc(c.viaje.origen||'Ubicación')} → ${esc(c.viaje.destino)}</div>`:''}</div>`).join('')
+        : `<div class="empty">No hay cancelaciones</div>`;
+    }
+  }
+
+  $('content').innerHTML = h;
+  const bi = $('buscar');
+  if (bi) bi.oninput = e => { busqueda = e.target.value; const pos = e.target.selectionStart; render(); const n=$('buscar'); if(n){n.focus(); n.setSelectionRange(pos,pos);} };
+}
+
+function irTab(k){ tab=k; busqueda=''; render(); }
+function setSubU(k){ subUsuarios=k; render(); }
+function setSubA(k){ subActividad=k; render(); }
+
+// --- modal detalle ---
+async function abrirDetalle(id, tipo){
+  const lista = tipo==='conductor' ? conductores : pasajeros;
+  const u = lista.find(x => x.id === id);
+  if (!u) return;
+  const esC = tipo==='conductor';
+  const s = esC ? infoSuscripcion(u.suscripcion_vence) : null;
+  const st = (esC?stats.conductor:stats.pasajero)[u.id] || {total:0,completados:0};
+
+  // cédulas: nuevas en bucket privado (URL firmada), viejas son http público
+  const resolver = async v => { if(!v)return null; if(v.startsWith('http'))return v;
+    const {data} = await sb.storage.from('cedulas').createSignedUrl(v, 300); return data?.signedUrl||null; };
+  const [front, post] = await Promise.all([resolver(u.cedula_frontal_url), resolver(u.cedula_posterior_url)]);
+
+  const foto = (uri,label,emoji,perfil) => {
+    const cls = perfil?'perfilImg':'img';
+    const inner = uri ? `<img class="${cls}" src="${esc(uri)}" onclick="window.open('${esc(uri)}','_blank')" style="cursor:pointer">`
+      : `<div class="${cls}">${emoji}</div>`;
+    return `<div class="foto">${inner}<div class="lbl">${label}</div></div>`;
+  };
+  const dato = (k,v) => `<div class="datoRow"><span class="datoK">${k}</span><span class="datoV">${esc(v||'—')}</span></div>`;
+
+  let acc = '';
+  if (u.estado!=='APROBADO') acc += `<button class="accionBtn bAprobar" onclick="${esC?`cambiarEstadoConductor`:`cambiarEstadoPasajero`}(window._u,'APROBADO')">✓ Aprobar</button>`;
+  if (u.estado!=='RECHAZADO') acc += `<button class="accionBtn bRechazar" onclick="${esC?`cambiarEstadoConductor`:`cambiarEstadoPasajero`}(window._u,'RECHAZADO')">✗ Rechazar</button>`;
+  if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bRenovar" onclick="renovar(window._u)">🔄 Renovar</button>`;
+  if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bSuspender" onclick="cambiarEstadoConductor(window._u,'SUSPENDIDO')">⏸ Suspender</button>`;
+  acc += `<button class="accionBtn bEliminar" onclick="eliminar(window._u.id,'${esC?'conductores':'pasajeros'}')">🗑️ Eliminar</button>`;
+
+  window._u = u;
+  $('modalRoot').innerHTML = `<div class="backdrop" onclick="if(event.target===this)cerrarModal()"><div class="sheet">
+    <div class="grip"></div>
+    <div class="modalTop">${avatar(u.foto_perfil_url,u.nombre_completo,56)}
+      <div style="flex:1"><div class="modalName">${esc(u.nombre_completo)}</div><div class="modalRole">${esC?'Conductor':'Pasajero'}</div></div>
+      <span class="badge" style="background:${estadoColor(u.estado)}1A;color:${estadoColor(u.estado)}">${esc(u.estado)}</span></div>
+    <div class="fotosRow">${foto(u.foto_perfil_url,'Perfil','👤',true)}${esC?foto(u.foto_vehiculo_url,'Vehículo','🚗'):''}</div>
+    <div class="fotosRow">${foto(front,'Cédula frontal','🪪')}${foto(post,'Cédula posterior','🪪')}</div>
+    <div class="datos">
+      ${esC?dato('Placa',u.placa):''}
+      ${dato('Cédula',u.cedula)}${dato('Email',u.email)}
+      ${dato('Registrado',fechaEC(u.fecha_registro))}
+      ${dato('Viajes',`${st.completados} completados · ${st.total} en total`)}
+      ${esC&&s?`<div class="datoRow"><span class="datoK">Suscripción</span><span class="badge" style="background:${s.color}1A;color:${s.color}">${s.texto}</span></div>`:''}
+    </div>
+    <div class="acciones">${acc}</div>
+    <button class="cerrar" onclick="cerrarModal()">Cerrar</button>
+  </div></div>`;
+}
+function cerrarModal(){ $('modalRoot').innerHTML=''; }
+</script>
+</body>
+</html>
