@@ -123,6 +123,51 @@
   .ramt{font-size:13px;font-weight:800}
   .rpay{font-size:10px;color:var(--tMuted)}
   @media(max-width:560px){.rtime{display:none}}
+  /* Suscripciones */
+  .navNuevo{margin-left:auto;background:#8B5CF6;color:#fff;border-radius:6px;padding:1px 6px;font-size:9px;font-weight:800}
+  .planBadge{border-radius:8px;padding:3px 10px;font-size:11px;font-weight:800}
+  .estadoSub{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700}
+  .tablaWrap{overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:2px 10px}
+  table.subs{width:100%;border-collapse:collapse;min-width:780px}
+  table.subs th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--tMuted);
+    text-align:left;padding:13px 10px;font-weight:700;border-bottom:1px solid var(--border)}
+  table.subs td{padding:12px 10px;font-size:13px;border-bottom:1px solid var(--border);white-space:nowrap}
+  table.subs tr:last-child td{border-bottom:none}
+  .tdCond{display:flex;align-items:center;gap:10px}
+  .tdCond .nm{font-weight:700}
+  .tdCond .id{font-size:11px;color:var(--tMuted)}
+  .verBtn{border:1px solid var(--accent);color:var(--accent);border-radius:9px;padding:6px 12px;
+    font-size:12px;font-weight:700;background:#2563EB0D}
+  .planGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .planCard{position:relative;background:var(--card);border:1px solid var(--border);border-radius:16px;
+    padding:18px;display:flex;flex-direction:column;gap:10px}
+  .planCard.pop{border-color:#8B5CF6;box-shadow:0 0 0 1px #8B5CF6}
+  .planPopTag{position:absolute;top:-10px;right:14px;background:#8B5CF6;color:#fff;border-radius:8px;
+    padding:2px 10px;font-size:10px;font-weight:800}
+  .planIco{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+  .planNom{font-size:16px;font-weight:800}
+  .planDesc{font-size:12px;color:var(--tSecondary)}
+  .planPrecio{font-size:24px;font-weight:900}
+  .planPrecio small{font-size:12px;color:var(--tMuted);font-weight:600}
+  .planFeat{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tSecondary)}
+  .planFeat b{color:var(--green)}
+  .planCount{margin-top:auto;font-size:12px;color:var(--tSecondary);font-weight:700;
+    background:var(--bg);border-radius:10px;padding:8px;text-align:center}
+  .txRow{display:flex;align-items:center;gap:10px;padding:11px 0}
+  .txRow+.txRow{border-top:1px solid var(--border)}
+  .txInfo{flex:1;min-width:0}
+  .txN{font-size:13px;font-weight:700}
+  .txP{font-size:11px;color:var(--tMuted)}
+  .txRight{text-align:right}
+  .txAmt{font-size:13px;font-weight:800}
+  .planPickList{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+  .planPick{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;
+    padding:12px;width:100%;text-align:left;background:var(--card)}
+  .planPick:hover{border-color:var(--accent)}
+  .planPickIcon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .planPickName{font-weight:800;flex:1}
+  .planPickPrice{font-weight:800;color:var(--accent)}
+  @media(max-width:760px){.planGrid{grid-template-columns:1fr}}
 
   /* Lista compacta (recientes, activos, pendientes) */
   .rowList{display:flex;flex-direction:column}
@@ -272,9 +317,20 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- estado ---
 let tab = 'dashboard', subUsuarios = 'conductores', subActividad = 'viajes', busqueda = '';
-let conductores = [], pasajeros = [], viajes = [], cancelaciones = [], stats = {conductor:{},pasajero:{}}, ratings = {};
+let conductores = [], pasajeros = [], viajes = [], cancelaciones = [], pagos = [], stats = {conductor:{},pasajero:{}}, ratings = {};
 let cargando = false;
-let _line = null, _donut = null;
+let _line = null, _donut = null, _ingresos = null;
+
+// Planes de suscripción (fijos). Para cambiar precios/beneficios, editar aquí.
+const PLANES = {
+  BASICO:  {nombre:'Básico',   precio:9.99,  color:'#22C55E', icon:'🚀', desc:'Ideal para comenzar',
+            features:['Hasta 30 viajes por mes','Soporte estándar','Acceso a la app']},
+  ESTANDAR:{nombre:'Estándar', precio:19.99, color:'#2563EB', icon:'⭐', desc:'Más viajes, más ganancias',
+            features:['Hasta 100 viajes por mes','Soporte prioritario','Promociones exclusivas']},
+  PREMIUM: {nombre:'Premium',  precio:29.99, color:'#8B5CF6', icon:'👑', desc:'Máximo rendimiento', popular:true,
+            features:['Viajes ilimitados','Soporte 24/7','Beneficios exclusivos','Menor comisión']},
+};
+const planInfo = k => PLANES[k] || null;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -289,6 +345,7 @@ const NAV = [
   {k:'pasajeros',   l:'Usuarios',      ic:'👥', titulo:'Usuarios (Pasajeros)'},
   {k:'conductores', l:'Conductores',   ic:'🪪', titulo:'Conductores'},
   {k:'solicitudes', l:'Solicitudes',   ic:'📥', titulo:'Solicitudes pendientes', badge:true},
+  {k:'suscripciones',l:'Suscripciones',ic:'🎫', titulo:'Suscripciones de Conductores', nuevo:true},
   {k:'cancelaciones',l:'Cancelaciones',ic:'🚫', titulo:'Cancelaciones'},
   {k:'vehiculos',   l:'Vehículos',     ic:'🚙', soon:true},
   {k:'pagos',       l:'Pagos',         ic:'💵', soon:true},
@@ -324,13 +381,14 @@ function toggleSidebar(force){
 // --- datos --- (bajo volumen: se carga todo y se deriva en cliente)
 async function cargarTodo(){
   cargando = true; render();
-  const [c,p,v,can] = await Promise.all([
+  const [c,p,v,can,pg] = await Promise.all([
     sb.from('conductores').select('*').order('fecha_registro',{ascending:false}),
     sb.from('pasajeros').select('*').order('fecha_registro',{ascending:false}),
     sb.from('viajes').select('id,origen,destino,fecha_hora,tarifa,estado,conductor_id,pasajero_id,calificacion_conductor').order('fecha_hora',{ascending:false}),
     sb.from('cancelaciones').select('*, viaje:viajes(origen,destino)').order('fecha_hora',{ascending:false}).limit(100),
+    sb.from('pagos_suscripcion').select('*').order('fecha',{ascending:false}).limit(300),
   ]);
-  conductores = c.data || []; pasajeros = p.data || []; viajes = v.data || []; cancelaciones = can.data || [];
+  conductores = c.data || []; pasajeros = p.data || []; viajes = v.data || []; cancelaciones = can.data || []; pagos = pg.data || [];
   const cc = {}, pp = {}, rt = {};
   const sumar = (m,id,e) => { if(!id)return; m[id]=m[id]||{total:0,completados:0}; m[id].total++; if(e==='COMPLETADO')m[id].completados++; };
   viajes.forEach(x => {
@@ -364,14 +422,6 @@ async function cambiarEstadoPasajero(p, estado){
     fecha_aprobacion: estado==='APROBADO' ? new Date().toISOString() : null,
   }).eq('id', p.id);
   if (!error) { cerrarModal(); cargarTodo(); }
-}
-async function renovar(c){
-  const nueva = sumarUnMes(c.suscripcion_vence);
-  if (!confirm(`¿Sumar 1 mes a ${c.nombre_completo}? Vigente hasta el ${nueva.toLocaleDateString('es-EC')}.`)) return;
-  const {error} = await sb.from('conductores').update({
-    suscripcion_inicio: new Date().toISOString(), suscripcion_vence: nueva.toISOString(),
-  }).eq('id', c.id);
-  if (error) alert('No se pudo renovar'); else { alert(`✓ Renovada. Vence el ${nueva.toLocaleDateString('es-EC')}`); cerrarModal(); cargarTodo(); }
 }
 async function eliminar(id, tabla){
   if (!confirm('¿Estás seguro? Esta acción no se puede deshacer.')) return;
@@ -468,6 +518,7 @@ function kpiCard(icon,bg,color,val,lbl,d){
 function render(){
   if (_line){ _line.destroy(); _line=null; }
   if (_donut){ _donut.destroy(); _donut=null; }
+  if (_ingresos){ _ingresos.destroy(); _ingresos=null; }
 
   const pendC = conductores.filter(c=>c.estado==='PENDIENTE');
   const pendP = pasajeros.filter(p=>p.estado==='PENDIENTE');
@@ -478,7 +529,8 @@ function render(){
     ? `<div class="navItem soon"><span class="ic">${n.ic}</span>${n.l}<span class="soonTag">Pronto</span></div>`
     : `<button class="navItem ${tab===n.k?'active':''}" onclick="irTab('${n.k}')">
         <span class="ic">${n.ic}</span>${n.l}
-        ${n.badge&&pendTotal?`<span class="navBadge">${pendTotal}</span>`:''}</button>`
+        ${n.badge&&pendTotal?`<span class="navBadge">${pendTotal}</span>`:''}
+        ${n.nuevo?`<span class="navNuevo">Nuevo</span>`:''}</button>`
   ).join('');
   $('pageTitle').textContent = (NAV.find(n=>n.k===tab)?.titulo) || 'Dashboard';
 
@@ -487,6 +539,7 @@ function render(){
 
   if (tab === 'dashboard') h = vistaDashboard(pendC, pendP, pendTotal);
   else if (tab === 'solicitudes') h = vistaSolicitudes(pendC, pendP, pendTotal);
+  else if (tab === 'suscripciones') h = vistaSuscripciones();
   else if (tab === 'conductores' || tab === 'pasajeros') h = vistaUsuarios();
   else if (tab === 'viajes') h = vistaViajes();
   else if (tab === 'cancelaciones') h = vistaCancelaciones();
@@ -495,6 +548,7 @@ function render(){
   $('content').innerHTML = h;
 
   if (tab === 'dashboard') dibujarGraficos();
+  if (tab === 'suscripciones') dibujarIngresos();
   const bi = $('buscar');
   if (bi) bi.oninput = e => { busqueda = e.target.value; const pos = e.target.selectionStart; render(); const n=$('buscar'); if(n){n.focus(); n.setSelectionRange(pos,pos);} };
 }
@@ -629,6 +683,136 @@ function vistaSolicitudes(pendC, pendP, pendTotal){
   return h;
 }
 
+const fechaCorta = d => new Date(d).toLocaleDateString('es-EC',{day:'2-digit',month:'short',year:'numeric'});
+
+function vistaSuscripciones(){
+  const activos = conductores.filter(c=>c.estado==='APROBADO');
+  const activas = activos.filter(c=>{const s=infoSuscripcion(c.suscripcion_vence); return s && !s.vencida;});
+  const porVencer = activos.filter(c=>{const s=infoSuscripcion(c.suscripcion_vence); return s && s.porVencer;});
+  const conPlan = activos.filter(c=>c.plan);
+  const pagosOk = pagos.filter(p=>p.estado==='PAGADO');
+  const ventana = (arr,campo,off)=>{const hasta=Date.now()-off*7*DIA, desde=hasta-7*DIA;
+    return arr.filter(x=>{const t=new Date(x[campo]).getTime(); return t>desde && t<=hasta;});};
+  const ing30 = pagosOk.filter(p=>Date.now()-new Date(p.fecha).getTime()<=30*DIA).reduce((s,p)=>s+Number(p.monto||0),0);
+  const sumar = a => a.reduce((s,p)=>s+Number(p.monto||0),0);
+  const dIng = delta(sumar(ventana(pagosOk,'fecha',0)), sumar(ventana(pagosOk,'fecha',1)));
+  const dAct = delta(ventana(activos,'suscripcion_inicio',0).length, ventana(activos,'suscripcion_inicio',1).length);
+
+  let h = `<div class="kpiGrid">
+    ${kpiCard('🎫','#2563EB1A','#2563EB', activas.length.toLocaleString('es-EC'), 'Suscripciones activas', dAct)}
+    ${kpiCard('💵','#22C55E1A','#16A34A', fmtMoney(ing30), 'Ingresos (30 días)', dIng)}
+    ${kpiCard('🪪','#8B5CF61A','#8B5CF6', conPlan.length.toLocaleString('es-EC'), 'Conductores con plan', dAct)}
+    <div class="kpiCard"><div class="kpiIcon" style="background:#F59E0B1A;color:#D97706">⏳</div>
+      <div style="flex:1"><div class="kpiLbl">Próximos a vencer</div><div class="kpiVal">${porVencer.length}</div>
+      <div class="kpiDelta" style="color:#D97706">Vigilar renovaciones</div></div></div>
+  </div>`;
+
+  // tabla de suscripciones
+  const filas = activos.slice().sort((a,b)=> new Date(a.suscripcion_vence||0) - new Date(b.suscripcion_vence||0)).map(c=>{
+    const s=infoSuscripcion(c.suscripcion_vence), pl=planInfo(c.plan);
+    const est = !s ? {t:'Sin datos',c:'var(--tMuted)'} : s.vencida ? {t:'Vencida',c:'var(--red)'}
+      : s.porVencer ? {t:'Próxima a vencer',c:'var(--orange)'} : {t:'Activa',c:'var(--green)'};
+    const prox = !s||s.vencida ? '—' : (fechaCorta(c.suscripcion_vence) + (s.dias===0?' (Hoy)':''));
+    return `<tr>
+      <td><div class="tdCond">${avatar(c.foto_perfil_url,c.nombre_completo,34)}
+        <div><div class="nm">${esc(c.nombre_completo)}</div><div class="id">ID: #COND-${esc(String(c.id).slice(0,4).toUpperCase())}</div></div></div></td>
+      <td>${pl?`<span class="planBadge" style="background:${pl.color}1A;color:${pl.color}">${pl.nombre}</span>`:'—'}</td>
+      <td><span class="estadoSub" style="color:${est.c}">● ${est.t}</span></td>
+      <td>${c.suscripcion_inicio?fechaCorta(c.suscripcion_inicio):'—'}</td>
+      <td>${c.suscripcion_vence?fechaCorta(c.suscripcion_vence):'—'}</td>
+      <td style="${s&&s.dias===0?'color:var(--orange);font-weight:700':''}">${prox}</td>
+      <td style="font-weight:800">${pl?fmtMoney(pl.precio):'—'}</td>
+      <td><button class="verBtn" onclick="abrirDetalle('${c.id}','conductor')">Ver detalles</button></td>
+    </tr>`;
+  }).join('');
+  h += `<div class="tablaWrap"><table class="subs">
+    <thead><tr><th>Conductor</th><th>Plan</th><th>Estado</th><th>Inicio</th><th>Vencimiento</th><th>Próximo pago</th><th>Monto</th><th>Acciones</th></tr></thead>
+    <tbody>${filas || `<tr><td colspan="8" style="text-align:center;color:var(--tSecondary);padding:24px">No hay conductores aprobados</td></tr>`}</tbody>
+  </table></div>`;
+
+  // tarjetas de planes
+  const planCards = Object.entries(PLANES).map(([k,p])=>{
+    const n = activos.filter(c=>c.plan===k).length;
+    return `<div class="planCard ${p.popular?'pop':''}">
+      ${p.popular?`<span class="planPopTag">Más popular</span>`:''}
+      <div class="planIco" style="background:${p.color}1A;color:${p.color}">${p.icon}</div>
+      <div><div class="planNom">${p.nombre}</div><div class="planDesc">${p.desc}</div></div>
+      <div class="planPrecio">${fmtMoney(p.precio)}<small>/mes</small></div>
+      <div style="display:flex;flex-direction:column;gap:7px">${p.features.map(f=>`<div class="planFeat"><b>✓</b> ${f}</div>`).join('')}</div>
+      <div class="planCount">${n} ${n===1?'conductor':'conductores'} en este plan</div>
+    </div>`;
+  }).join('');
+  h += `<div class="panelHead" style="margin-top:8px"><div class="panelTitle">Planes de suscripción</div></div>
+    <div class="planGrid">${planCards}</div>`;
+
+  // ingresos + transacciones
+  const txs = pagos.slice(0,6).map(p=>{
+    const c = conductores.find(x=>x.id===p.conductor_id), pl = planInfo(p.plan);
+    const ec = {PAGADO:'var(--green)',PENDIENTE:'var(--orange)',FALLIDO:'var(--red)'}[p.estado]||'var(--tSecondary)';
+    const et = {PAGADO:'Pagado',PENDIENTE:'Pendiente',FALLIDO:'Fallido'}[p.estado]||p.estado;
+    return `<div class="txRow">${avatar(c&&c.foto_perfil_url, c?c.nombre_completo:'?',34)}
+      <div class="txInfo"><div class="txN">${esc(c?c.nombre_completo:'Conductor')}</div>
+        <div class="txP">${pl?'Plan '+pl.nombre:'—'} · ${esc(cuando(p.fecha))}</div></div>
+      <div class="txRight"><div class="txAmt">${fmtMoney(p.monto)}</div>
+        <span class="badge" style="background:${ec}1A;color:${ec};font-size:10px">${et}</span></div>
+    </div>`;
+  }).join('') || `<div class="empty" style="border:none">Aún no hay transacciones</div>`;
+
+  h += `<div class="dashGrid">
+    <div class="panel"><div class="panelHead"><div class="panelTitle">Resumen de ingresos</div><div class="actMeta">Últimos 30 días</div></div>
+      <div style="font-size:22px;font-weight:900">${fmtMoney(ing30)}
+        ${dIng?`<span class="kpiDelta ${dIng.up?'up':'down'}" style="display:inline-flex">${dIng.up?'▲':'▼'} ${dIng.pct}%</span>`:''}</div>
+      <div class="chartBox" style="height:200px;margin-top:8px"><canvas id="cIngresos"></canvas></div></div>
+    <div class="panel"><div class="panelHead"><div class="panelTitle">Transacciones recientes</div></div>
+      <div class="rowList">${txs}</div></div>
+  </div>`;
+  return h;
+}
+
+function dibujarIngresos(){
+  const ctx = $('cIngresos'); if(!ctx) return;
+  const labels=[], data=[];
+  for(let i=29;i>=0;i--){
+    const d=new Date(Date.now()-i*DIA), key=d.toDateString();
+    labels.push(d.toLocaleDateString('es-EC',{day:'2-digit',month:'2-digit'}));
+    data.push(pagos.filter(p=>p.estado==='PAGADO'&&new Date(p.fecha).toDateString()===key).reduce((s,p)=>s+Number(p.monto||0),0));
+  }
+  _ingresos = new Chart(ctx,{type:'line',
+    data:{labels, datasets:[{label:'Ingresos', data, borderColor:'#2563EB', backgroundColor:'#2563EB22', tension:.35, fill:true, pointRadius:2}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true, ticks:{callback:v=>'$'+v}}, x:{ticks:{maxTicksLimit:6, font:{size:10}}}}}
+  });
+}
+
+// modal para elegir plan al aprobar/renovar (registra el pago)
+function modalPlan(cid, modo){
+  const c = conductores.find(x=>x.id===cid); if(!c) return;
+  const cards = Object.entries(PLANES).map(([k,p])=>`
+    <button class="planPick" onclick="ejecutarPlan('${cid}','${k}','${modo}')">
+      <span class="planPickIcon" style="background:${p.color}1A;color:${p.color}">${p.icon}</span>
+      <span class="planPickName">${p.nombre}</span>
+      <span class="planPickPrice">${fmtMoney(p.precio)}/mes</span>
+    </button>`).join('');
+  $('modalRoot').innerHTML = `<div class="backdrop" onclick="if(event.target===this)cerrarModal()"><div class="sheet" style="max-width:420px">
+    <div class="modalName">${modo==='aprobar'?'Aprobar y asignar plan':'Renovar suscripción'}</div>
+    <div class="modalRole">${esc(c.nombre_completo)} · se registra el pago del plan elegido</div>
+    <div class="planPickList">${cards}</div>
+    <button class="cerrar" onclick="cerrarModal()">Cancelar</button>
+  </div></div>`;
+}
+async function ejecutarPlan(cid, planKey, modo){
+  const c = conductores.find(x=>x.id===cid); if(!c) return;
+  const p = PLANES[planKey];
+  const venceBase = modo==='renovar' ? c.suscripcion_vence : null;
+  const upd = {plan:planKey, suscripcion_inicio:new Date().toISOString(), suscripcion_vence:sumarUnMes(venceBase).toISOString()};
+  if (modo==='aprobar'){ upd.estado='APROBADO'; upd.verificado=true; upd.fecha_aprobacion=new Date().toISOString(); }
+  const {error} = await sb.from('conductores').update(upd).eq('id', cid);
+  if (error){ alert('No se pudo: '+error.message); return; }
+  const {error:e2} = await sb.from('pagos_suscripcion').insert({conductor_id:cid, plan:planKey, monto:p.precio, estado:'PAGADO'});
+  if (e2) alert('Suscripción actualizada, pero el pago no se registró: '+e2.message);
+  cerrarModal(); cargarTodo();
+}
+
 function vistaUsuarios(){
   const tipo = tab==='conductores' ? 'conductor' : 'pasajero';
   const fuente = tab==='conductores' ? conductores : pasajeros;
@@ -691,9 +875,11 @@ async function abrirDetalle(id, tipo){
   const dato = (k,v) => `<div class="datoRow"><span class="datoK">${k}</span><span class="datoV">${esc(v||'—')}</span></div>`;
 
   let acc = '';
-  if (u.estado!=='APROBADO') acc += `<button class="accionBtn bAprobar" onclick="${esC?`cambiarEstadoConductor`:`cambiarEstadoPasajero`}(window._u,'APROBADO')">✓ Aprobar</button>`;
+  if (u.estado!=='APROBADO') acc += esC
+    ? `<button class="accionBtn bAprobar" onclick="modalPlan('${u.id}','aprobar')">✓ Aprobar</button>`
+    : `<button class="accionBtn bAprobar" onclick="cambiarEstadoPasajero(window._u,'APROBADO')">✓ Aprobar</button>`;
   if (u.estado!=='RECHAZADO') acc += `<button class="accionBtn bRechazar" onclick="${esC?`cambiarEstadoConductor`:`cambiarEstadoPasajero`}(window._u,'RECHAZADO')">✗ Rechazar</button>`;
-  if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bRenovar" onclick="renovar(window._u)">🔄 Renovar</button>`;
+  if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bRenovar" onclick="modalPlan('${u.id}','renovar')">🔄 Renovar</button>`;
   if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bSuspender" onclick="cambiarEstadoConductor(window._u,'SUSPENDIDO')">⏸ Suspender</button>`;
   acc += `<button class="accionBtn bEliminar" onclick="eliminar(window._u.id,'${esC?'conductores':'pasajeros'}')">🗑️ Eliminar</button>`;
 
@@ -711,6 +897,7 @@ async function abrirDetalle(id, tipo){
       ${dato('Registrado',fechaEC(u.fecha_registro))}
       ${dato('Viajes',`${st.completados} completados · ${st.total} en total`)}
       ${esC?dato('Calificación', r?`⭐ ${r}`:'Sin calificaciones'):''}
+      ${esC&&planInfo(u.plan)?`<div class="datoRow"><span class="datoK">Plan</span><span class="planBadge" style="background:${planInfo(u.plan).color}1A;color:${planInfo(u.plan).color}">${planInfo(u.plan).nombre} · ${fmtMoney(planInfo(u.plan).precio)}/mes</span></div>`:''}
       ${esC&&s?`<div class="datoRow"><span class="datoK">Suscripción</span><span class="badge" style="background:${s.color}1A;color:${s.color}">${s.texto}</span></div>`:''}
     </div>
     <div class="acciones">${acc}</div>
