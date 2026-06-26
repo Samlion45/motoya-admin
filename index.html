@@ -335,7 +335,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let tab = 'dashboard', subUsuarios = 'conductores', subActividad = 'viajes', busqueda = '';
 let conductores = [], pasajeros = [], viajes = [], cancelaciones = [], pagos = [], soporte = [], stats = {conductor:{},pasajero:{}}, ratings = {};
 let cargando = false;
-let chatAbierto = null; // conductor_id de la conversación abierta
+let chatAbierto = null; // {tipo, id} de la conversación abierta (conductor o pasajero)
 let _line = null, _donut = null, _ingresos = null;
 
 // Planes de suscripción (fijos). Para cambiar precios/beneficios, editar aquí.
@@ -363,7 +363,7 @@ const NAV = [
   {k:'conductores', l:'Conductores',   ic:'🪪', titulo:'Conductores'},
   {k:'solicitudes', l:'Solicitudes',   ic:'📥', titulo:'Solicitudes pendientes', badge:true},
   {k:'suscripciones',l:'Suscripciones',ic:'🎫', titulo:'Suscripciones de Conductores', nuevo:true},
-  {k:'soporte',     l:'Soporte',       ic:'🎧', titulo:'Soporte de Conductores', badgeSoporte:true},
+  {k:'soporte',     l:'Soporte',       ic:'🎧', titulo:'Soporte (conductores y pasajeros)', badgeSoporte:true},
   {k:'cancelaciones',l:'Cancelaciones',ic:'🚫', titulo:'Cancelaciones'},
   {k:'vehiculos',   l:'Vehículos',     ic:'🚙', soon:true},
   {k:'pagos',       l:'Pagos',         ic:'💵', soon:true},
@@ -559,7 +559,7 @@ function render(){
   const pendTotal = pendC.length + pendP.length;
 
   // sidebar
-  const soporteNoLeidos = new Set(soporte.filter(m => m.remitente==='conductor' && !m.leido_admin).map(m => m.conductor_id)).size;
+  const soporteNoLeidos = new Set(soporte.filter(m => m.remitente!=='admin' && !m.leido_admin).map(m => m.pasajero_id?'p:'+m.pasajero_id:'c:'+m.conductor_id)).size;
   $('nav').innerHTML = NAV.map(n => n.soon
     ? `<div class="navItem soon"><span class="ic">${n.ic}</span>${n.l}<span class="soonTag">Pronto</span></div>`
     : `<button class="navItem ${tab===n.k?'active':''}" onclick="irTab('${n.k}')">
@@ -864,21 +864,28 @@ const horaCorta = d => {
   return f.toDateString()===h.toDateString() ? t : f.toLocaleDateString('es-EC',{day:'2-digit',month:'short'});
 };
 
-// --- Soporte: una conversación por conductor ---
+// --- Soporte: una conversación por usuario (conductor o pasajero) ---
 function vistaSoporte(){
-  const porCond = {};
-  soporte.forEach(m => { (porCond[m.conductor_id] = porCond[m.conductor_id] || []).push(m); });
-  const convs = Object.entries(porCond).map(([cid, msgs]) => {
-    const ultimo = msgs[msgs.length-1];
-    const noLeidos = msgs.filter(m => m.remitente==='conductor' && !m.leido_admin).length;
-    return { cid, c: conductores.find(x=>x.id===cid), ultimo, noLeidos };
+  const grupos = {};
+  soporte.forEach(m => {
+    const tipo = m.pasajero_id ? 'pasajero' : 'conductor';
+    const id = m.pasajero_id || m.conductor_id;
+    if (!id) return;
+    (grupos[tipo+':'+id] = grupos[tipo+':'+id] || {tipo, id, msgs:[]}).msgs.push(m);
+  });
+  const convs = Object.values(grupos).map(g => {
+    const ultimo = g.msgs[g.msgs.length-1];
+    const noLeidos = g.msgs.filter(m => m.remitente!=='admin' && !m.leido_admin).length;
+    const persona = (g.tipo==='conductor'?conductores:pasajeros).find(x=>x.id===g.id);
+    return { ...g, persona, ultimo, noLeidos };
   }).sort((a,b) => new Date(b.ultimo.fecha) - new Date(a.ultimo.fecha));
 
   if (!convs.length) return `<div class="empty">No hay conversaciones de soporte todavía 💬</div>`;
-  return convs.map(cv => `<button class="fila" onclick="abrirChat('${cv.cid}')">
-    ${avatar(cv.c?.foto_perfil_url, cv.c?.nombre_completo||'?')}
+  return convs.map(cv => `<button class="fila" onclick="abrirChat('${cv.tipo}','${cv.id}')">
+    ${avatar(cv.persona?.foto_perfil_url, cv.persona?.nombre_completo||'?')}
     <div class="filaInfo">
-      <div class="filaNombre">${esc(cv.c?.nombre_completo || 'Conductor')}</div>
+      <div class="filaNombre">${esc(cv.persona?.nombre_completo || (cv.tipo==='conductor'?'Conductor':'Pasajero'))}
+        <span style="font-size:10px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;background:${cv.tipo==='conductor'?'#dbeafe':'#dcfce7'};color:${cv.tipo==='conductor'?'var(--accent)':'var(--green)'}">${cv.tipo==='conductor'?'Conductor':'Pasajero'}</span></div>
       <div class="filaMeta">${cv.ultimo.remitente==='admin'?'Tú: ':''}${esc(cv.ultimo.texto)}</div>
     </div>
     <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
@@ -888,43 +895,50 @@ function vistaSoporte(){
   </button>`).join('');
 }
 
-async function abrirChat(cid){
-  chatAbierto = cid;
-  pintarChat(cid);
-  // Marca como leídos los mensajes del conductor.
-  const hayNoLeidos = soporte.some(m => m.conductor_id===cid && m.remitente==='conductor' && !m.leido_admin);
+async function abrirChat(tipo, id){
+  chatAbierto = {tipo, id};
+  pintarChat(chatAbierto);
+  // Marca como leídos los mensajes del usuario (no los del admin).
+  const col = tipo==='pasajero' ? 'pasajero_id' : 'conductor_id';
+  const hayNoLeidos = soporte.some(m => m[col]===id && m.remitente===tipo && !m.leido_admin);
   if (hayNoLeidos){
-    await sb.from('soporte_mensajes').update({leido_admin:true}).eq('conductor_id', cid).eq('remitente','conductor').eq('leido_admin', false);
-    soporte = soporte.map(m => (m.conductor_id===cid && m.remitente==='conductor') ? {...m, leido_admin:true} : m);
+    await sb.from('soporte_mensajes').update({leido_admin:true}).eq(col, id).eq('remitente',tipo).eq('leido_admin', false);
+    soporte = soporte.map(m => (m[col]===id && m.remitente===tipo) ? {...m, leido_admin:true} : m);
     if (tab==='soporte') render();
   }
 }
 
-function pintarChat(cid){
-  const c = conductores.find(x=>x.id===cid);
-  const msgs = soporte.filter(m => m.conductor_id===cid).sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
+function pintarChat(conv){
+  const { tipo, id } = conv;
+  const col = tipo==='pasajero' ? 'pasajero_id' : 'conductor_id';
+  const persona = (tipo==='conductor'?conductores:pasajeros).find(x=>x.id===id);
+  const msgs = soporte.filter(m => m[col]===id).sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
+  const sub = tipo==='conductor'
+    ? (planInfo(persona?.plan)?'Plan '+planInfo(persona.plan).nombre:'Sin plan')
+    : 'Pasajero';
   const burbujas = msgs.map(m => `<div class="chatRow ${m.remitente==='admin'?'der':'izq'}">
     <div class="chatBubble ${m.remitente==='admin'?'mio':'otro'}">${esc(m.texto)}<span class="chatHora">${horaCorta(m.fecha)}</span></div>
   </div>`).join('') || `<div class="empty" style="border:none">Sin mensajes aún</div>`;
   $('modalRoot').innerHTML = `<div class="backdrop" onclick="if(event.target===this)cerrarChat()"><div class="sheet chatSheet">
-    <div class="chatHead">${avatar(c?.foto_perfil_url, c?.nombre_completo||'?',38)}
-      <div style="flex:1"><div class="modalName" style="font-size:16px">${esc(c?.nombre_completo||'Conductor')}</div>
-        <div class="modalRole">${planInfo(c?.plan)?'Plan '+planInfo(c.plan).nombre:'Sin plan'}</div></div>
+    <div class="chatHead">${avatar(persona?.foto_perfil_url, persona?.nombre_completo||'?',38)}
+      <div style="flex:1"><div class="modalName" style="font-size:16px">${esc(persona?.nombre_completo||(tipo==='conductor'?'Conductor':'Pasajero'))}</div>
+        <div class="modalRole">${esc(sub)}</div></div>
       <button class="cerrar" style="margin:0;padding:8px 14px;width:auto" onclick="cerrarChat()">Cerrar</button></div>
     <div class="chatBody" id="chatBody">${burbujas}</div>
     <div class="chatInputRow">
-      <input id="chatInput" class="chatInput" placeholder="Escribe una respuesta…" autocomplete="off" onkeydown="if(event.key==='Enter')enviarSoporte('${cid}')">
-      <button class="chatSend" onclick="enviarSoporte('${cid}')">➤</button>
+      <input id="chatInput" class="chatInput" placeholder="Escribe una respuesta…" autocomplete="off" onkeydown="if(event.key==='Enter')enviarSoporte('${tipo}','${id}')">
+      <button class="chatSend" onclick="enviarSoporte('${tipo}','${id}')">➤</button>
     </div>
   </div></div>`;
   const body = $('chatBody'); if (body) body.scrollTop = body.scrollHeight;
   const inp = $('chatInput'); if (inp) inp.focus();
 }
 
-async function enviarSoporte(cid){
+async function enviarSoporte(tipo, id){
   const inp = $('chatInput'); const t = (inp?.value||'').trim(); if(!t) return;
   inp.value = '';
-  const { error } = await sb.from('soporte_mensajes').insert({conductor_id:cid, remitente:'admin', texto:t});
+  const fila = tipo==='pasajero' ? {pasajero_id:id, remitente:'admin', texto:t} : {conductor_id:id, remitente:'admin', texto:t};
+  const { error } = await sb.from('soporte_mensajes').insert(fila);
   if (error){ alert('No se pudo enviar: '+error.message); return; }
   await recargarSoporte();
 }
