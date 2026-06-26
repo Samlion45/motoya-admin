@@ -245,6 +245,7 @@
   .bAprobar{background:#22C55E18;border-color:#22C55E55;color:var(--green)}
   .bRechazar{background:#EF444414;border-color:#EF444444;color:var(--red)}
   .bRenovar{background:#2563EB14;border-color:#2563EB55;color:var(--accent)}
+  .bCambiar{background:#8B5CF614;border-color:#8B5CF655;color:#8B5CF6}
   .bSuspender{background:#2563EB14;border-color:#2563EB44;color:var(--blue)}
   .bEliminar{background:#EF444414;border-color:#EF444444;color:var(--red)}
   .cerrar{margin-top:14px;padding:14px;width:100%;text-align:center;font-size:14px;
@@ -793,9 +794,11 @@ function modalPlan(cid, modo){
       <span class="planPickName">${p.nombre}</span>
       <span class="planPickPrice">${fmtMoney(p.precio)}/mes</span>
     </button>`).join('');
+  const titulo = modo==='aprobar' ? 'Aprobar y asignar plan' : modo==='cambiar' ? 'Cambiar de plan' : 'Renovar suscripción';
+  const sub = modo==='cambiar' ? 'Solo cambia el plan (no modifica fechas ni registra pago)' : 'se registra el pago del plan elegido';
   $('modalRoot').innerHTML = `<div class="backdrop" onclick="if(event.target===this)cerrarModal()"><div class="sheet" style="max-width:420px">
-    <div class="modalName">${modo==='aprobar'?'Aprobar y asignar plan':'Renovar suscripción'}</div>
-    <div class="modalRole">${esc(c.nombre_completo)} · se registra el pago del plan elegido</div>
+    <div class="modalName">${titulo}</div>
+    <div class="modalRole">${esc(c.nombre_completo)} · ${sub}</div>
     <div class="planPickList">${cards}</div>
     <button class="cerrar" onclick="cerrarModal()">Cancelar</button>
   </div></div>`;
@@ -803,6 +806,13 @@ function modalPlan(cid, modo){
 async function ejecutarPlan(cid, planKey, modo){
   const c = conductores.find(x=>x.id===cid); if(!c) return;
   const p = PLANES[planKey];
+  // Cambiar de plan: solo actualiza el nivel, sin tocar fechas ni registrar pago.
+  if (modo==='cambiar'){
+    const {error} = await sb.from('conductores').update({plan:planKey}).eq('id', cid);
+    if (error){ alert('No se pudo: '+error.message); return; }
+    cerrarModal(); cargarTodo();
+    return;
+  }
   const venceBase = modo==='renovar' ? c.suscripcion_vence : null;
   const upd = {plan:planKey, suscripcion_inicio:new Date().toISOString(), suscripcion_vence:sumarUnMes(venceBase).toISOString()};
   if (modo==='aprobar'){ upd.estado='APROBADO'; upd.verificado=true; upd.fecha_aprobacion=new Date().toISOString(); }
@@ -880,6 +890,7 @@ async function abrirDetalle(id, tipo){
     : `<button class="accionBtn bAprobar" onclick="cambiarEstadoPasajero(window._u,'APROBADO')">✓ Aprobar</button>`;
   if (u.estado!=='RECHAZADO') acc += `<button class="accionBtn bRechazar" onclick="${esC?`cambiarEstadoConductor`:`cambiarEstadoPasajero`}(window._u,'RECHAZADO')">✗ Rechazar</button>`;
   if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bRenovar" onclick="modalPlan('${u.id}','renovar')">🔄 Renovar</button>`;
+  if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bCambiar" onclick="modalPlan('${u.id}','cambiar')">🔁 Cambiar plan</button>`;
   if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bSuspender" onclick="cambiarEstadoConductor(window._u,'SUSPENDIDO')">⏸ Suspender</button>`;
   acc += `<button class="accionBtn bEliminar" onclick="eliminar(window._u.id,'${esC?'conductores':'pasajeros'}')">🗑️ Eliminar</button>`;
 
