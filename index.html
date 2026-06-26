@@ -80,11 +80,16 @@
   /* KPIs */
   .kpiGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
   .kpiCard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;
-    display:flex;align-items:center;gap:14px}
+    display:flex;align-items:flex-start;gap:14px}
   .kpiIcon{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;
     font-size:22px;flex-shrink:0}
-  .kpiVal{font-size:24px;font-weight:900;line-height:1.1}
-  .kpiLbl{font-size:12px;color:var(--tSecondary);font-weight:600;margin-top:2px}
+  .kpiLbl{font-size:12px;color:var(--tSecondary);font-weight:600}
+  .kpiVal{font-size:24px;font-weight:900;line-height:1.15;margin-top:2px}
+  .kpiDelta{font-size:11px;font-weight:700;margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+  .kpiDelta.up{color:#16A34A}
+  .kpiDelta.down{color:var(--red)}
+  .kpiDelta.muted{color:var(--tMuted);font-weight:600}
+  .kpiDelta span{color:var(--tMuted);font-weight:500}
 
   /* Panels / dashboard grid */
   .dashGrid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
@@ -94,7 +99,30 @@
   .panelTitle{font-size:15px;font-weight:800}
   .panelLink{font-size:12px;color:var(--accent);font-weight:700}
   .chartBox{position:relative;height:240px}
-  .donutBox{position:relative;height:190px}
+  /* Donut + leyenda */
+  .donutWrap{display:flex;align-items:center;gap:18px}
+  .donutCanvas{position:relative;width:150px;height:150px;flex-shrink:0}
+  .donutCenter{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;pointer-events:none}
+  .donutCenter b{font-size:21px;font-weight:900}
+  .donutCenter span{font-size:11px;color:var(--tSecondary)}
+  .donutLegend{flex:1;display:flex;flex-direction:column;gap:12px}
+  .dlRow{display:flex;align-items:center;gap:8px;font-size:13px}
+  .dlDot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+  .dlLbl{flex:1;font-weight:600}
+  .dlPct{font-weight:800}
+  .dlCnt{color:var(--tMuted);font-size:11px;width:46px;text-align:right}
+  /* Viajes recientes (estilo referencia) */
+  .rrow{display:flex;align-items:center;gap:10px;padding:11px 0}
+  .rrow+.rrow{border-top:1px solid var(--border)}
+  .rinfo{flex:1;min-width:0}
+  .rname{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rid{font-size:11px;color:var(--tMuted);margin-top:2px}
+  .rtime{font-size:11px;color:var(--tSecondary);white-space:nowrap}
+  .rright{text-align:right;flex-shrink:0}
+  .ramt{font-size:13px;font-weight:800}
+  .rpay{font-size:10px;color:var(--tMuted)}
+  @media(max-width:560px){.rtime{display:none}}
 
   /* Lista compacta (recientes, activos, pendientes) */
   .rowList{display:flex;flex-direction:column}
@@ -373,6 +401,30 @@ const coincide = u => {
   return [u.nombre_completo,u.cedula,u.placa,u.email].filter(Boolean).some(x => String(x).toLowerCase().includes(q));
 };
 
+// métricas de una ventana semanal (off=0 últimos 7 días, off=1 semana previa)
+function metricasSemana(off){
+  const hasta = Date.now() - off*7*DIA, desde = hasta - 7*DIA;
+  const vs = viajes.filter(v => { const t=new Date(v.fecha_hora).getTime(); return t>desde && t<=hasta; });
+  return {
+    viajes: vs.length,
+    usuarios: new Set(vs.map(v=>v.pasajero_id).filter(Boolean)).size,
+    conductores: new Set(vs.map(v=>v.conductor_id).filter(Boolean)).size,
+    ingresos: vs.filter(v=>v.estado==='COMPLETADO').reduce((s,v)=>s+Number(v.tarifa||0),0),
+  };
+}
+function delta(act, prev){
+  if (prev === 0) return act>0 ? {pct:'100.0', up:true} : null;
+  const d = (act-prev)/prev*100;
+  return {pct:Math.abs(d).toFixed(1), up:d>=0};
+}
+function cuando(d){
+  const f=new Date(d), h=new Date(), t=f.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+  return f.toDateString()===h.toDateString() ? ('Hoy, '+t)
+    : (f.toLocaleDateString('es-EC',{day:'2-digit',month:'short'})+', '+t);
+}
+const estadoBonito = e => ({COMPLETADO:'Completado','EN CURSO':'En curso',SOLICITADO:'Solicitado',CANCELADO:'Cancelado'}[e]||e);
+const badgeViaje = e => ({COMPLETADO:'var(--green)','EN CURSO':'var(--blue)',SOLICITADO:'var(--orange)',CANCELADO:'var(--orange)'}[e]||'var(--tSecondary)');
+
 // serie de los últimos n días: completados vs cancelados
 function serieDias(n){
   const labels=[], comp=[], canc=[];
@@ -402,10 +454,13 @@ function filaUsuario(u, tipo){
   </button>`;
 }
 
-function kpiCard(icon,bg,color,val,lbl){
+function kpiCard(icon,bg,color,val,lbl,d){
+  const dh = d
+    ? `<div class="kpiDelta ${d.up?'up':'down'}">${d.up?'▲':'▼'} ${d.pct}% <span>vs sem. anterior</span></div>`
+    : `<div class="kpiDelta muted">Sin datos previos</div>`;
   return `<div class="kpiCard">
     <div class="kpiIcon" style="background:${bg};color:${color}">${icon}</div>
-    <div><div class="kpiVal">${val}</div><div class="kpiLbl">${lbl}</div></div>
+    <div style="flex:1;min-width:0"><div class="kpiLbl">${lbl}</div><div class="kpiVal">${val}</div>${dh}</div>
   </div>`;
 }
 
@@ -448,23 +503,27 @@ function vistaDashboard(pendC, pendP, pendTotal){
   const ingresos = viajes.filter(v=>v.estado==='COMPLETADO').reduce((s,v)=>s+Number(v.tarifa||0),0);
   const condActivos = conductores.filter(c=>c.estado==='APROBADO');
   const pasActivos = pasajeros.filter(p=>p.estado==='APROBADO');
+  const sA = metricasSemana(0), sB = metricasSemana(1);
 
   let h = `<div class="kpiGrid">
-    ${kpiCard('🚗','#2563EB1A','#2563EB', viajes.length.toLocaleString('es-EC'), 'Viajes totales')}
-    ${kpiCard('👥','#22C55E1A','#16A34A', pasActivos.length.toLocaleString('es-EC'), 'Usuarios activos')}
-    ${kpiCard('🪪','#6366F11A','#6366F1', condActivos.length.toLocaleString('es-EC'), 'Conductores activos')}
-    ${kpiCard('💵','#F59E0B1A','#D97706', fmtMoney(ingresos), 'Ingresos en efectivo')}
+    ${kpiCard('🚗','#2563EB1A','#2563EB', viajes.length.toLocaleString('es-EC'), 'Viajes totales', delta(sA.viajes,sB.viajes))}
+    ${kpiCard('👥','#22C55E1A','#16A34A', pasActivos.length.toLocaleString('es-EC'), 'Usuarios activos', delta(sA.usuarios,sB.usuarios))}
+    ${kpiCard('🪪','#6366F11A','#6366F1', condActivos.length.toLocaleString('es-EC'), 'Conductores activos', delta(sA.conductores,sB.conductores))}
+    ${kpiCard('💵','#F59E0B1A','#D97706', fmtMoney(ingresos), 'Ingresos en efectivo', delta(sA.ingresos,sB.ingresos))}
   </div>`;
 
-  // línea + viajes recientes
-  const recientes = viajes.slice(0,6).map(v => `<div class="lrow">
-    ${avatar(null, nombrePas(v.pasajero_id), 36)}
-    <div class="info"><div class="t1">${esc(nombrePas(v.pasajero_id))}</div>
-      <div class="t2">${esc(v.origen)} → ${esc(v.destino)}</div></div>
-    <div style="text-align:right">
-      <span class="badge" style="background:${viajeColor(v.estado)}1A;color:${viajeColor(v.estado)}">${esc(v.estado)}</span>
-      <div class="amt" style="margin-top:4px">${fmtMoney(v.tarifa)}</div></div>
-  </div>`).join('') || `<div class="empty" style="border:none">Aún no hay viajes</div>`;
+  // línea + viajes recientes (estilo referencia)
+  const recientes = viajes.slice(0,6).map(v => {
+    const col = badgeViaje(v.estado);
+    return `<div class="rrow">
+      ${avatar(null, nombrePas(v.pasajero_id), 34)}
+      <div class="rinfo"><div class="rname">${esc(nombrePas(v.pasajero_id))}</div>
+        <div class="rid">ID: #${esc(String(v.id).slice(0,6).toUpperCase())}</div></div>
+      <span class="badge" style="background:${col}1A;color:${col}">${esc(estadoBonito(v.estado))}</span>
+      <div class="rtime">${esc(cuando(v.fecha_hora))}</div>
+      <div class="rright"><div class="ramt">${fmtMoney(v.tarifa)}</div><div class="rpay">Efectivo</div></div>
+    </div>`;
+  }).join('') || `<div class="empty" style="border:none">Aún no hay viajes</div>`;
 
   h += `<div class="dashGrid">
     <div class="panel">
@@ -500,10 +559,24 @@ function vistaDashboard(pendC, pendP, pendTotal){
       <span class="badge" style="background:#FF8A001A;color:var(--orange)">Pendiente</span>
     </button>`).join('');
 
+  const dComp = viajes.filter(v=>v.estado==='COMPLETADO').length;
+  const dCanc = viajes.filter(v=>v.estado==='CANCELADO').length;
+  const dProg = viajes.filter(v=>v.estado==='EN CURSO'||v.estado==='SOLICITADO').length;
+  const dTot = dComp+dCanc+dProg;
+  window._dona = {comp:dComp, canc:dCanc, prog:dProg};
+  const pctD = n => dTot ? Math.round(n/dTot*100) : 0;
+  const legenda = [['Completados','#2563EB',dComp],['Cancelados','#FF8A00',dCanc],['En progreso','#94A3B8',dProg]]
+    .map(([l,c,n]) => `<div class="dlRow"><span class="dlDot" style="background:${c}"></span>
+      <span class="dlLbl">${l}</span><span class="dlPct">${pctD(n)}%</span><span class="dlCnt">(${n})</span></div>`).join('');
+
   h += `<div class="dashGrid2">
     <div class="panel">
       <div class="panelHead"><div class="panelTitle">Distribución de viajes</div></div>
-      <div class="donutBox"><canvas id="cDona"></canvas></div>
+      <div class="donutWrap">
+        <div class="donutCanvas"><canvas id="cDona"></canvas>
+          <div class="donutCenter"><b>${dTot.toLocaleString('es-EC')}</b><span>Total</span></div></div>
+        <div class="donutLegend">${legenda}</div>
+      </div>
     </div>
     <div class="panel">
       <div class="panelHead"><div class="panelTitle">Conductores activos</div>
@@ -537,14 +610,13 @@ function dibujarGraficos(){
     });
   }
   if (ctxD){
-    const orden = ['COMPLETADO','EN CURSO','SOLICITADO','CANCELADO'];
-    const datos = orden.map(e => viajes.filter(v=>v.estado===e).length);
+    const d = window._dona || {comp:0,canc:0,prog:0};
     _donut = new Chart(ctxD, {
       type:'doughnut',
-      data:{labels:['Completados','En curso','Solicitados','Cancelados'],
-        datasets:[{data:datos, backgroundColor:['#22C55E','#2563EB','#FF8A00','#EF4444'], borderWidth:0}]},
-      options:{responsive:true, maintainAspectRatio:false, cutout:'62%',
-        plugins:{legend:{position:'bottom', labels:{boxWidth:10, font:{size:11}}}}}
+      data:{labels:['Completados','Cancelados','En progreso'],
+        datasets:[{data:[d.comp,d.canc,d.prog], backgroundColor:['#2563EB','#FF8A00','#94A3B8'], borderWidth:0}]},
+      options:{responsive:true, maintainAspectRatio:false, cutout:'70%',
+        plugins:{legend:{display:false}}}
     });
   }
 }
