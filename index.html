@@ -252,6 +252,21 @@
     font-weight:700;color:var(--tSecondary)}
   .loading{padding:60px;text-align:center;color:var(--tSecondary)}
 
+  /* Chat de soporte */
+  .chatSheet{display:flex;flex-direction:column;max-width:560px;height:80vh;padding:0}
+  .chatHead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
+  .chatBody{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
+  .chatRow{display:flex}
+  .chatRow.izq{justify-content:flex-start}
+  .chatRow.der{justify-content:flex-end}
+  .chatBubble{max-width:78%;border-radius:14px;padding:9px 12px;font-size:14px;line-height:1.35;position:relative}
+  .chatBubble.otro{background:var(--card);border:1px solid var(--border);border-top-left-radius:4px;color:var(--tPrimary)}
+  .chatBubble.mio{background:var(--accent);color:#fff;border-top-right-radius:4px}
+  .chatHora{display:block;font-size:10px;opacity:.7;text-align:right;margin-top:3px}
+  .chatInputRow{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card)}
+  .chatInput{flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;outline:none;background:var(--bg);color:var(--tPrimary)}
+  .chatSend{width:46px;border-radius:12px;background:var(--accent);color:#fff;font-size:18px;font-weight:800}
+
   @media(max-width:900px){
     .sidebar{transform:translateX(-100%)}
     .sidebar.open{transform:none}
@@ -318,8 +333,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- estado ---
 let tab = 'dashboard', subUsuarios = 'conductores', subActividad = 'viajes', busqueda = '';
-let conductores = [], pasajeros = [], viajes = [], cancelaciones = [], pagos = [], stats = {conductor:{},pasajero:{}}, ratings = {};
+let conductores = [], pasajeros = [], viajes = [], cancelaciones = [], pagos = [], soporte = [], stats = {conductor:{},pasajero:{}}, ratings = {};
 let cargando = false;
+let chatAbierto = null; // conductor_id de la conversación abierta
 let _line = null, _donut = null, _ingresos = null;
 
 // Planes de suscripción (fijos). Para cambiar precios/beneficios, editar aquí.
@@ -347,13 +363,13 @@ const NAV = [
   {k:'conductores', l:'Conductores',   ic:'🪪', titulo:'Conductores'},
   {k:'solicitudes', l:'Solicitudes',   ic:'📥', titulo:'Solicitudes pendientes', badge:true},
   {k:'suscripciones',l:'Suscripciones',ic:'🎫', titulo:'Suscripciones de Conductores', nuevo:true},
+  {k:'soporte',     l:'Soporte',       ic:'🎧', titulo:'Soporte de Conductores', badgeSoporte:true},
   {k:'cancelaciones',l:'Cancelaciones',ic:'🚫', titulo:'Cancelaciones'},
   {k:'vehiculos',   l:'Vehículos',     ic:'🚙', soon:true},
   {k:'pagos',       l:'Pagos',         ic:'💵', soon:true},
   {k:'reportes',    l:'Reportes',      ic:'📈', soon:true},
   {k:'promociones', l:'Promociones',   ic:'🎁', soon:true},
   {k:'notificaciones',l:'Notificaciones',ic:'🔔', soon:true},
-  {k:'soporte',     l:'Soporte',       ic:'💬', soon:true},
 ];
 
 // --- auth ---
@@ -371,7 +387,23 @@ $('loginBtn').onclick = async () => {
 $('pwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
 $('logoutBtn').onclick = async () => { await sb.auth.signOut(); $('app').classList.add('hidden'); $('login').classList.remove('hidden'); };
 
-function entrar(){ $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('hoyChip').textContent = fechaEC(Date.now()); cargarTodo(); }
+let _rtSoporte = null;
+function entrar(){
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('hoyChip').textContent = fechaEC(Date.now()); cargarTodo();
+  // Realtime: mensajes de soporte nuevos llegan al instante.
+  if (!_rtSoporte) {
+    _rtSoporte = sb.channel('rt-soporte')
+      .on('postgres_changes', {event:'*', schema:'public', table:'soporte_mensajes'}, recargarSoporte)
+      .subscribe();
+  }
+}
+
+async function recargarSoporte(){
+  const { data } = await sb.from('soporte_mensajes').select('*').order('fecha',{ascending:true});
+  soporte = data || [];
+  if (tab === 'soporte') render();
+  if (chatAbierto) pintarChat(chatAbierto);
+}
 
 function toggleSidebar(force){
   const sb = $('sidebar'), ov = $('overlay');
@@ -382,14 +414,15 @@ function toggleSidebar(force){
 // --- datos --- (bajo volumen: se carga todo y se deriva en cliente)
 async function cargarTodo(){
   cargando = true; render();
-  const [c,p,v,can,pg] = await Promise.all([
+  const [c,p,v,can,pg,sop] = await Promise.all([
     sb.from('conductores').select('*').order('fecha_registro',{ascending:false}),
     sb.from('pasajeros').select('*').order('fecha_registro',{ascending:false}),
     sb.from('viajes').select('id,origen,destino,fecha_hora,tarifa,estado,conductor_id,pasajero_id,calificacion_conductor').order('fecha_hora',{ascending:false}),
     sb.from('cancelaciones').select('*, viaje:viajes(origen,destino)').order('fecha_hora',{ascending:false}).limit(100),
     sb.from('pagos_suscripcion').select('*').order('fecha',{ascending:false}).limit(300),
+    sb.from('soporte_mensajes').select('*').order('fecha',{ascending:true}),
   ]);
-  conductores = c.data || []; pasajeros = p.data || []; viajes = v.data || []; cancelaciones = can.data || []; pagos = pg.data || [];
+  conductores = c.data || []; pasajeros = p.data || []; viajes = v.data || []; cancelaciones = can.data || []; pagos = pg.data || []; soporte = sop.data || [];
   const cc = {}, pp = {}, rt = {};
   const sumar = (m,id,e) => { if(!id)return; m[id]=m[id]||{total:0,completados:0}; m[id].total++; if(e==='COMPLETADO')m[id].completados++; };
   viajes.forEach(x => {
@@ -526,11 +559,13 @@ function render(){
   const pendTotal = pendC.length + pendP.length;
 
   // sidebar
+  const soporteNoLeidos = new Set(soporte.filter(m => m.remitente==='conductor' && !m.leido_admin).map(m => m.conductor_id)).size;
   $('nav').innerHTML = NAV.map(n => n.soon
     ? `<div class="navItem soon"><span class="ic">${n.ic}</span>${n.l}<span class="soonTag">Pronto</span></div>`
     : `<button class="navItem ${tab===n.k?'active':''}" onclick="irTab('${n.k}')">
         <span class="ic">${n.ic}</span>${n.l}
         ${n.badge&&pendTotal?`<span class="navBadge">${pendTotal}</span>`:''}
+        ${n.badgeSoporte&&soporteNoLeidos?`<span class="navBadge">${soporteNoLeidos}</span>`:''}
         ${n.nuevo?`<span class="navNuevo">Nuevo</span>`:''}</button>`
   ).join('');
   $('pageTitle').textContent = (NAV.find(n=>n.k===tab)?.titulo) || 'Dashboard';
@@ -541,6 +576,7 @@ function render(){
   if (tab === 'dashboard') h = vistaDashboard(pendC, pendP, pendTotal);
   else if (tab === 'solicitudes') h = vistaSolicitudes(pendC, pendP, pendTotal);
   else if (tab === 'suscripciones') h = vistaSuscripciones();
+  else if (tab === 'soporte') h = vistaSoporte();
   else if (tab === 'conductores' || tab === 'pasajeros') h = vistaUsuarios();
   else if (tab === 'viajes') h = vistaViajes();
   else if (tab === 'cancelaciones') h = vistaCancelaciones();
@@ -822,6 +858,78 @@ async function ejecutarPlan(cid, planKey, modo){
   if (e2) alert('Suscripción actualizada, pero el pago no se registró: '+e2.message);
   cerrarModal(); cargarTodo();
 }
+
+const horaCorta = d => {
+  const f=new Date(d), h=new Date(), t=f.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+  return f.toDateString()===h.toDateString() ? t : f.toLocaleDateString('es-EC',{day:'2-digit',month:'short'});
+};
+
+// --- Soporte: una conversación por conductor ---
+function vistaSoporte(){
+  const porCond = {};
+  soporte.forEach(m => { (porCond[m.conductor_id] = porCond[m.conductor_id] || []).push(m); });
+  const convs = Object.entries(porCond).map(([cid, msgs]) => {
+    const ultimo = msgs[msgs.length-1];
+    const noLeidos = msgs.filter(m => m.remitente==='conductor' && !m.leido_admin).length;
+    return { cid, c: conductores.find(x=>x.id===cid), ultimo, noLeidos };
+  }).sort((a,b) => new Date(b.ultimo.fecha) - new Date(a.ultimo.fecha));
+
+  if (!convs.length) return `<div class="empty">No hay conversaciones de soporte todavía 💬</div>`;
+  return convs.map(cv => `<button class="fila" onclick="abrirChat('${cv.cid}')">
+    ${avatar(cv.c?.foto_perfil_url, cv.c?.nombre_completo||'?')}
+    <div class="filaInfo">
+      <div class="filaNombre">${esc(cv.c?.nombre_completo || 'Conductor')}</div>
+      <div class="filaMeta">${cv.ultimo.remitente==='admin'?'Tú: ':''}${esc(cv.ultimo.texto)}</div>
+    </div>
+    <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <span class="actMeta">${horaCorta(cv.ultimo.fecha)}</span>
+      ${cv.noLeidos?`<span class="navBadge">${cv.noLeidos}</span>`:''}
+    </div>
+  </button>`).join('');
+}
+
+async function abrirChat(cid){
+  chatAbierto = cid;
+  pintarChat(cid);
+  // Marca como leídos los mensajes del conductor.
+  const hayNoLeidos = soporte.some(m => m.conductor_id===cid && m.remitente==='conductor' && !m.leido_admin);
+  if (hayNoLeidos){
+    await sb.from('soporte_mensajes').update({leido_admin:true}).eq('conductor_id', cid).eq('remitente','conductor').eq('leido_admin', false);
+    soporte = soporte.map(m => (m.conductor_id===cid && m.remitente==='conductor') ? {...m, leido_admin:true} : m);
+    if (tab==='soporte') render();
+  }
+}
+
+function pintarChat(cid){
+  const c = conductores.find(x=>x.id===cid);
+  const msgs = soporte.filter(m => m.conductor_id===cid).sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
+  const burbujas = msgs.map(m => `<div class="chatRow ${m.remitente==='admin'?'der':'izq'}">
+    <div class="chatBubble ${m.remitente==='admin'?'mio':'otro'}">${esc(m.texto)}<span class="chatHora">${horaCorta(m.fecha)}</span></div>
+  </div>`).join('') || `<div class="empty" style="border:none">Sin mensajes aún</div>`;
+  $('modalRoot').innerHTML = `<div class="backdrop" onclick="if(event.target===this)cerrarChat()"><div class="sheet chatSheet">
+    <div class="chatHead">${avatar(c?.foto_perfil_url, c?.nombre_completo||'?',38)}
+      <div style="flex:1"><div class="modalName" style="font-size:16px">${esc(c?.nombre_completo||'Conductor')}</div>
+        <div class="modalRole">${planInfo(c?.plan)?'Plan '+planInfo(c.plan).nombre:'Sin plan'}</div></div>
+      <button class="cerrar" style="margin:0;padding:8px 14px;width:auto" onclick="cerrarChat()">Cerrar</button></div>
+    <div class="chatBody" id="chatBody">${burbujas}</div>
+    <div class="chatInputRow">
+      <input id="chatInput" class="chatInput" placeholder="Escribe una respuesta…" autocomplete="off" onkeydown="if(event.key==='Enter')enviarSoporte('${cid}')">
+      <button class="chatSend" onclick="enviarSoporte('${cid}')">➤</button>
+    </div>
+  </div></div>`;
+  const body = $('chatBody'); if (body) body.scrollTop = body.scrollHeight;
+  const inp = $('chatInput'); if (inp) inp.focus();
+}
+
+async function enviarSoporte(cid){
+  const inp = $('chatInput'); const t = (inp?.value||'').trim(); if(!t) return;
+  inp.value = '';
+  const { error } = await sb.from('soporte_mensajes').insert({conductor_id:cid, remitente:'admin', texto:t});
+  if (error){ alert('No se pudo enviar: '+error.message); return; }
+  await recargarSoporte();
+}
+
+function cerrarChat(){ chatAbierto = null; cerrarModal(); if (tab==='soporte') render(); }
 
 function vistaUsuarios(){
   const tipo = tab==='conductores' ? 'conductor' : 'pasajero';
