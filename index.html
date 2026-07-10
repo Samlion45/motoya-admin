@@ -242,6 +242,8 @@
   .acciones{display:flex;flex-wrap:wrap;gap:8px}
   .accionBtn{flex:1 1 46%;min-width:120px;border:1px solid;border-radius:12px;padding:12px;
     font-size:14px;font-weight:700;text-align:center}
+  .fotoPend{margin-top:12px;padding:12px;border:1px solid #F59E0B66;background:#F59E0B12;border-radius:14px}
+  .fotoPendTit{font-size:13px;font-weight:800;color:var(--orange);margin-bottom:10px}
   .bAprobar{background:#22C55E18;border-color:#22C55E55;color:var(--green)}
   .bRechazar{background:#EF444414;border-color:#EF444444;color:var(--red)}
   .bRenovar{background:#2563EB14;border-color:#2563EB55;color:var(--accent)}
@@ -448,6 +450,17 @@ async function cambiarEstadoConductor(c, estado){
     ...(estado==='APROBADO' ? {suscripcion_inicio: new Date().toISOString(), suscripcion_vence: sumarUnMes().toISOString()} : {}),
   }).eq('id', c.id);
   if (error) alert('No se pudo actualizar el estado'); else { cerrarModal(); cargarTodo(); }
+}
+// Aprobar/rechazar la foto de perfil que el conductor subió y quedó pendiente.
+// Aprobar la mueve a foto_perfil_url (la que ven todos); rechazar la descarta.
+async function resolverFotoPendiente(id, aprobar){
+  const c = conductores.find(x=>x.id===id); if(!c) return;
+  if (!confirm(aprobar ? '¿Aprobar la nueva foto? Reemplazará la foto de perfil actual.' : '¿Rechazar la nueva foto? Se descartará.')) return;
+  const upd = aprobar
+    ? {foto_perfil_url: c.foto_perfil_pendiente, foto_perfil_pendiente: null}
+    : {foto_perfil_pendiente: null};
+  const {error} = await sb.from('conductores').update(upd).eq('id', id);
+  if (error) alert('No se pudo actualizar la foto'); else { cerrarModal(); cargarTodo(); }
 }
 async function cambiarEstadoPasajero(p, estado){
   if (!confirm(`¿Cambiar estado de ${p.nombre_completo} a ${estado}?`)) return;
@@ -1024,6 +1037,13 @@ async function abrirDetalle(id, tipo){
       <span class="badge" style="background:${estadoColor(u.estado)}1A;color:${estadoColor(u.estado)}">${esc(u.estado)}</span></div>
     <div class="fotosRow">${foto(u.foto_perfil_url,'Perfil','👤',true)}${esC?foto(u.foto_vehiculo_url,'Vehículo','🚗'):''}</div>
     <div class="fotosRow">${foto(front,'Cédula frontal','🪪')}${foto(post,'Cédula posterior','🪪')}</div>
+    ${esC && u.foto_perfil_pendiente ? `<div class="fotoPend">
+      <div class="fotoPendTit">📷 Nueva foto de perfil · pendiente de aprobación</div>
+      <div class="fotosRow">${foto(u.foto_perfil_pendiente,'Nueva foto','👤',true)}</div>
+      <div class="acciones">
+        <button class="accionBtn bAprobar" onclick="resolverFotoPendiente('${u.id}',true)">✓ Aprobar foto</button>
+        <button class="accionBtn bRechazar" onclick="resolverFotoPendiente('${u.id}',false)">✗ Rechazar</button>
+      </div></div>` : ''}
     <div class="datos">
       ${esC?dato('Placa',u.placa):''}
       ${dato('Cédula',u.cedula)}${dato('Email',u.email)}
