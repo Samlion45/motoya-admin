@@ -3,1061 +3,888 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>RutaExpress · Panel Admin</title>
-<link rel="icon" href="data:,">
+<title>RutaExpress Admin</title>
+<link rel="icon" href="assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#F2F4F7;--card:#FFFFFF;--border:#E2E8F0;--accent:#2563EB;--onAccent:#fff;
-    --green:#22C55E;--red:#EF4444;--orange:#FF8A00;--blue:#2563EB;--indigo:#6366F1;--amber:#F59E0B;
-    --tPrimary:#1E293B;--tSecondary:#64748B;--tMuted:#94A3B8;--muted:#E2E8F0;
-    --sidebar:#0F172A;--sidebarHover:#1E293B;
+    --bg:#F4F6FA;--card:#FFFFFF;--border:#E6EAF1;--accent:#2563EB;--accentDark:#1E40AF;
+    --green:#16A34A;--red:#DC2626;--orange:#EA7A00;--amber:#D97706;--violet:#7C3AED;
+    --t1:#0F172A;--t2:#5B6B82;--t3:#94A3B8;--muted:#EEF2F7;
+    --side:#0B1220;--sideHover:#151F33;
+    --sh1:0 1px 2px rgba(15,23,42,.04),0 2px 8px rgba(15,23,42,.04);
+    --sh2:0 10px 30px rgba(15,23,42,.12);
+    --r:16px;--ease:cubic-bezier(.22,1,.36,1);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{margin:0;background:var(--bg);color:var(--tPrimary);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    padding-bottom:env(safe-area-inset-bottom)}
+  html,body{margin:0;background:var(--bg);color:var(--t1);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px}
   h1,h2,h3,p{margin:0}
-  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;font-size:inherit}
+  input{font-family:inherit}
   img{display:block}
   .hidden{display:none!important}
+  svg.lucide{width:18px;height:18px;stroke-width:2;flex-shrink:0}
+
+  /* Animaciones */
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes pop{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes shimmer{to{background-position:-200% 0}}
+  .in{animation:up .5s var(--ease) both;animation-delay:calc(var(--i,0) * 45ms)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
   /* Login */
-  #login{min-height:100vh;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;gap:14px;padding:32px;text-align:center}
-  #login .iconBox{width:80px;height:80px;background:var(--card);border-radius:24px;
-    display:flex;align-items:center;justify-content:center;font-size:40px}
-  #login h1{font-size:28px;font-weight:900}
-  #login .sub{font-size:12px;color:var(--tSecondary);letter-spacing:2px}
-  #login input{width:100%;max-width:340px;background:var(--card);border:1.5px solid var(--border);
-    border-radius:14px;padding:15px;font-size:15px;color:var(--tPrimary)}
-  #login button{width:100%;max-width:340px;background:var(--accent);color:#fff;border-radius:14px;
-    padding:16px;font-size:16px;font-weight:800}
-  #login button:disabled{background:var(--muted)}
-  #login .hint{font-size:11px;color:var(--tMuted)}
+  #login{min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr}
+  .loginArt{position:relative;background:url(assets/mapa-bg.jpg) center/cover;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .loginArt::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,transparent 30%,rgba(244,246,250,.6))}
+  .loginRadar{position:relative;width:360px;height:360px;z-index:1}
+  .loginRadar img{position:absolute;left:130px;top:130px;width:100px;height:100px;border-radius:50%;box-shadow:0 8px 24px rgba(37,99,235,.35);background:#fff}
+  .loginForm{display:flex;flex-direction:column;justify-content:center;padding:48px clamp(24px,6vw,96px);gap:14px;background:var(--card)}
+  .loginForm h1{font-size:30px;font-weight:900;letter-spacing:-.6px}
+  .loginForm .sub{color:var(--t2);margin-bottom:10px}
+  .field{display:flex;align-items:center;gap:10px;border:1.5px solid var(--border);border-radius:14px;padding:0 14px;height:52px;background:var(--bg);transition:border-color .2s}
+  .field:focus-within{border-color:var(--accent);background:#fff}
+  .field input{flex:1;border:none;outline:none;background:none;font-size:15px;color:var(--t1)}
+  .field svg{color:var(--t3)}
+  .hint{font-size:12px;color:var(--t3)}
+  @media(max-width:860px){#login{grid-template-columns:1fr}.loginArt{height:300px}.loginRadar{transform:scale(.75)}}
+
+  /* Botones */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;font-weight:700;transition:transform .15s var(--ease),box-shadow .2s,background .2s,opacity .2s;white-space:nowrap}
+  a.btn{text-decoration:none}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.5;pointer-events:none}
+  .btn.pri{background:linear-gradient(135deg,#4F8DF7,var(--accent) 55%,var(--accentDark));color:#fff;box-shadow:0 6px 16px rgba(37,99,235,.3)}
+  .btn.pri:hover{box-shadow:0 8px 22px rgba(37,99,235,.4)}
+  .btn.ok{background:linear-gradient(135deg,#4ADE80,#22C55E 55%,var(--green));color:#fff;box-shadow:0 6px 16px rgba(22,163,74,.28)}
+  .btn.soft{background:#fff;border:1px solid var(--border);color:var(--t1);box-shadow:var(--sh1)}
+  .btn.soft:hover{border-color:#CBD5E1}
+  .btn.warn{background:linear-gradient(180deg,#FFFFFF,#FFF7ED 55%,#FFEDD5);border:1.2px solid #FDBA74;color:#C2410C;box-shadow:0 4px 12px rgba(234,122,0,.16)}
+  .btn.warn:hover{box-shadow:0 6px 18px rgba(234,122,0,.26)}
+  .btn.danger{background:linear-gradient(180deg,#FFFFFF,#FFF5F5 55%,#FEE2E2);border:1.2px solid #FCA5A5;color:var(--red);box-shadow:0 4px 12px rgba(220,38,38,.14)}
+  .btn.danger:hover{box-shadow:0 6px 18px rgba(220,38,38,.24)}
+  .btn.solidRed{background:linear-gradient(135deg,#F87171,#EF4444 55%,var(--red));color:#fff;box-shadow:0 6px 16px rgba(220,38,38,.3)}
+  .btn.sm{height:34px;padding:0 12px;border-radius:10px;font-size:13px}
+  .btn.full{width:100%}
+  .link{color:var(--accent);font-weight:700;font-size:13px}
+  .link:hover{text-decoration:underline}
 
   /* Layout */
   .layout{display:flex;min-height:100vh}
-  .sidebar{width:240px;background:var(--sidebar);color:#CBD5E1;display:flex;flex-direction:column;
-    position:fixed;top:0;left:0;bottom:0;z-index:40;transition:transform .25s ease;overflow-y:auto}
-  .sidebar .sbBrand{display:flex;align-items:center;gap:10px;padding:20px 18px 16px}
-  .sidebar .logo{width:36px;height:36px;border-radius:10px;background:var(--accent);color:#fff;
-    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px}
-  .sidebar .name{font-size:16px;font-weight:800;color:#fff}
-  .sidebar .tag{font-size:10px;color:#64748B;letter-spacing:.5px}
-  .nav{flex:1;padding:6px 0}
-  .navItem{display:flex;align-items:center;gap:12px;padding:10px 14px;margin:2px 10px;border-radius:10px;
-    color:#94A3B8;font-size:14px;font-weight:600;width:calc(100% - 20px);text-align:left}
-  .navItem .ic{width:20px;text-align:center;font-size:16px}
-  .navItem:hover{background:var(--sidebarHover);color:#fff}
-  .navItem.active{background:var(--accent);color:#fff}
-  .navItem.soon{opacity:.45;cursor:default}
-  .navItem.soon:hover{background:none;color:#94A3B8}
-  .navBadge{margin-left:auto;background:var(--orange);color:#fff;border-radius:9px;min-width:18px;
-    height:18px;padding:0 5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
-  .soonTag{margin-left:auto;font-size:9px;color:#475569;border:1px solid #334155;border-radius:6px;padding:1px 5px}
-  .sbUser{display:flex;align-items:center;gap:10px;padding:14px 16px;border-top:1px solid #1E293B}
-  .sbUser .av{width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;
-    display:flex;align-items:center;justify-content:center;font-weight:800}
-  .sbUser .un{font-size:13px;font-weight:700;color:#fff}
-  .sbUser .ur{font-size:11px;color:#64748B}
-  .sbUser .out{margin-left:auto;color:#94A3B8;font-size:18px;padding:4px}
+  .side{width:244px;background:var(--side);color:#CBD5E1;position:fixed;inset:0 auto 0 0;display:flex;flex-direction:column;z-index:40;transition:transform .3s var(--ease)}
+  .brand{display:flex;align-items:center;gap:10px;padding:22px 18px 18px}
+  .brand img{width:38px;height:38px;border-radius:11px}
+  .brand b{display:block;color:#fff;font-size:16px;font-weight:800}
+  .brand span{font-size:11px;color:#64748B}
+  .nav{flex:1;padding:4px 10px;display:flex;flex-direction:column;gap:2px}
+  .navItem{position:relative;display:flex;align-items:center;gap:12px;height:42px;padding:0 12px;border-radius:11px;color:#94A3B8;font-weight:600;transition:background .2s,color .2s}
+  .navItem:hover{background:var(--sideHover);color:#fff}
+  .navItem.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(37,99,235,.35)}
+  .navBadge{margin-left:auto;background:var(--orange);color:#fff;border-radius:10px;min-width:20px;height:20px;padding:0 6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+  .navItem.active .navBadge{background:#fff;color:var(--accent)}
+  .sideFoot{display:flex;align-items:center;gap:10px;padding:16px;border-top:1px solid #1E293B}
+  .sideFoot .av{width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+  .sideFoot b{display:block;color:#fff;font-size:13px}
+  .sideFoot span{font-size:11px;color:#64748B}
+  .sideFoot button{margin-left:auto;color:#94A3B8;padding:8px;border-radius:10px}
+  .sideFoot button:hover{background:var(--sideHover);color:#fff}
+  .main{flex:1;margin-left:244px;min-width:0}
+  .top{display:flex;align-items:center;gap:12px;padding:22px 28px 6px}
+  .top h2{font-size:22px;font-weight:900;letter-spacing:-.4px}
+  .top .sub{font-size:13px;color:var(--t2);margin-top:2px}
+  .top .sp{flex:1}
+  .hamb{display:none;width:42px;height:42px;border-radius:12px;background:#fff;border:1px solid var(--border);align-items:center;justify-content:center}
+  .content{padding:16px 28px 56px;display:flex;flex-direction:column;gap:18px}
+  .scrim{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:35;opacity:0;pointer-events:none;transition:opacity .25s}
+  .scrim.show{opacity:1;pointer-events:auto}
+  @media(max-width:900px){
+    .side{transform:translateX(-100%)}.side.open{transform:none}
+    .main{margin-left:0}.hamb{display:flex}
+    .content{padding:14px 16px 48px}.top{padding:16px 16px 4px}
+    .top .btn span,.top .sub{display:none}
+  }
 
-  .main{flex:1;margin-left:240px;min-width:0;display:flex;flex-direction:column}
-  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 24px 8px}
-  .topbar h2{font-size:20px;font-weight:800}
-  .topbar .sub{font-size:12px;color:var(--tSecondary);margin-top:2px}
-  .hamb{display:none;width:40px;height:40px;border-radius:10px;background:var(--card);
-    border:1px solid var(--border);align-items:center;justify-content:center;font-size:18px}
-  .dateChip{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);
-    border-radius:12px;padding:9px 14px;font-size:13px;color:var(--tSecondary);font-weight:600}
-  .content{padding:14px 24px 48px;display:flex;flex-direction:column;gap:18px}
-  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:35}
-  .overlay.show{display:block}
+  /* Tarjetas */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh1)}
+  .pad{padding:18px}
+  .head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .head h3{font-size:15px;font-weight:800}
+  .muted{color:var(--t2);font-size:12.5px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px}
+  .grid4>*,.grid2>*{min-width:0}
+  @media(max-width:1100px){.grid4{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
+  @media(max-width:520px){.grid4{grid-template-columns:1fr 1fr;gap:10px}}
 
-  .sectionTitle{font-size:12px;font-weight:800;color:var(--tMuted);text-transform:uppercase;
-    letter-spacing:.6px;margin:6px 0 2px}
+  .kpi{display:flex;gap:14px;align-items:flex-start;padding:18px;transition:transform .2s var(--ease),box-shadow .2s}
+  .kpi:hover{transform:translateY(-2px);box-shadow:var(--sh2)}
+  .kpiIc{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .kpiIc svg{width:22px;height:22px}
+  .kpi .l{font-size:12.5px;color:var(--t2);font-weight:600}
+  .kpi .v{font-size:26px;font-weight:900;letter-spacing:-.6px;margin-top:2px;font-variant-numeric:tabular-nums}
+  .kpi .d{font-size:11.5px;font-weight:700;margin-top:4px}
+  .up{color:var(--green)}.down{color:var(--red)}.neutral{color:var(--t3)}
+  @media(max-width:520px){.opt{display:none}}
+  @media(max-width:520px){.kpi{padding:14px;gap:10px}.kpiIc{width:38px;height:38px}.kpi .v{font-size:21px}}
 
-  /* KPIs */
-  .kpiGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-  .kpiCard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;
-    display:flex;align-items:flex-start;gap:14px}
-  .kpiIcon{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;
-    font-size:22px;flex-shrink:0}
-  .kpiLbl{font-size:12px;color:var(--tSecondary);font-weight:600}
-  .kpiVal{font-size:24px;font-weight:900;line-height:1.15;margin-top:2px}
-  .kpiDelta{font-size:11px;font-weight:700;margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-  .kpiDelta.up{color:#16A34A}
-  .kpiDelta.down{color:var(--red)}
-  .kpiDelta.muted{color:var(--tMuted);font-weight:600}
-  .kpiDelta span{color:var(--tMuted);font-weight:500}
+  .chart{position:relative;height:250px}
 
-  /* Panels / dashboard grid */
-  .dashGrid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
-  .dashGrid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
-  .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px}
-  .panelHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-  .panelTitle{font-size:15px;font-weight:800}
-  .panelLink{font-size:12px;color:var(--accent);font-weight:700}
-  .chartBox{position:relative;height:240px}
-  /* Donut + leyenda */
-  .donutWrap{display:flex;align-items:center;gap:18px}
-  .donutCanvas{position:relative;width:150px;height:150px;flex-shrink:0}
-  .donutCenter{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;pointer-events:none}
-  .donutCenter b{font-size:21px;font-weight:900}
-  .donutCenter span{font-size:11px;color:var(--tSecondary)}
-  .donutLegend{flex:1;display:flex;flex-direction:column;gap:12px}
-  .dlRow{display:flex;align-items:center;gap:8px;font-size:13px}
-  .dlDot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
-  .dlLbl{flex:1;font-weight:600}
-  .dlPct{font-weight:800}
-  .dlCnt{color:var(--tMuted);font-size:11px;width:46px;text-align:right}
-  /* Viajes recientes (estilo referencia) */
-  .rrow{display:flex;align-items:center;gap:10px;padding:11px 0}
-  .rrow+.rrow{border-top:1px solid var(--border)}
-  .rinfo{flex:1;min-width:0}
-  .rname{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .rid{font-size:11px;color:var(--tMuted);margin-top:2px}
-  .rtime{font-size:11px;color:var(--tSecondary);white-space:nowrap}
-  .rright{text-align:right;flex-shrink:0}
-  .ramt{font-size:13px;font-weight:800}
-  .rpay{font-size:10px;color:var(--tMuted)}
-  @media(max-width:560px){.rtime{display:none}}
-  /* Suscripciones */
-  .navNuevo{margin-left:auto;background:#8B5CF6;color:#fff;border-radius:6px;padding:1px 6px;font-size:9px;font-weight:800}
-  .planBadge{border-radius:8px;padding:3px 10px;font-size:11px;font-weight:800}
-  .estadoSub{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700}
-  .tablaWrap{overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:2px 10px}
-  table.subs{width:100%;border-collapse:collapse;min-width:780px}
-  table.subs th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--tMuted);
-    text-align:left;padding:13px 10px;font-weight:700;border-bottom:1px solid var(--border)}
-  table.subs td{padding:12px 10px;font-size:13px;border-bottom:1px solid var(--border);white-space:nowrap}
-  table.subs tr:last-child td{border-bottom:none}
-  .tdCond{display:flex;align-items:center;gap:10px}
-  .tdCond .nm{font-weight:700}
-  .tdCond .id{font-size:11px;color:var(--tMuted)}
-  .verBtn{border:1px solid var(--accent);color:var(--accent);border-radius:9px;padding:6px 12px;
-    font-size:12px;font-weight:700;background:#2563EB0D}
-  .planGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-  .planCard{position:relative;background:var(--card);border:1px solid var(--border);border-radius:16px;
-    padding:18px;display:flex;flex-direction:column;gap:10px}
-  .planCard.pop{border-color:#8B5CF6;box-shadow:0 0 0 1px #8B5CF6}
-  .planPopTag{position:absolute;top:-10px;right:14px;background:#8B5CF6;color:#fff;border-radius:8px;
-    padding:2px 10px;font-size:10px;font-weight:800}
-  .planIco{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
-  .planNom{font-size:16px;font-weight:800}
-  .planDesc{font-size:12px;color:var(--tSecondary)}
-  .planPrecio{font-size:24px;font-weight:900}
-  .planPrecio small{font-size:12px;color:var(--tMuted);font-weight:600}
-  .planFeat{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tSecondary)}
-  .planFeat b{color:var(--green)}
-  .planCount{margin-top:auto;font-size:12px;color:var(--tSecondary);font-weight:700;
-    background:var(--bg);border-radius:10px;padding:8px;text-align:center}
-  .txRow{display:flex;align-items:center;gap:10px;padding:11px 0}
-  .txRow+.txRow{border-top:1px solid var(--border)}
-  .txInfo{flex:1;min-width:0}
-  .txN{font-size:13px;font-weight:700}
-  .txP{font-size:11px;color:var(--tMuted)}
-  .txRight{text-align:right}
-  .txAmt{font-size:13px;font-weight:800}
-  .planPickList{display:flex;flex-direction:column;gap:10px;margin:12px 0}
-  .planPick{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;
-    padding:12px;width:100%;text-align:left;background:var(--card)}
-  .planPick:hover{border-color:var(--accent)}
-  .planPickIcon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
-  .planPickName{font-weight:800;flex:1}
-  .planPickPrice{font-weight:800;color:var(--accent)}
-  @media(max-width:760px){.planGrid{grid-template-columns:1fr}}
+  /* Filas */
+  .row{display:flex;align-items:center;gap:12px;padding:12px 14px;width:100%;text-align:left;border-radius:14px;transition:background .15s}
+  button.row:hover{background:var(--muted)}
+  .rows .row+.row{border-top:1px solid var(--border);border-radius:0}
+  .rows button.row+button.row:hover{border-radius:0}
+  .rowInfo{flex:1;min-width:0}
+  .rowT{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rowS{font-size:12.5px;color:var(--t2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rowR{text-align:right;flex-shrink:0}
+  .amt{font-weight:800;font-variant-numeric:tabular-nums}
+  .chev{color:var(--t3)}
+  .av{width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#2563EB18;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800}
+  .veh{width:40px;height:40px;object-fit:contain;flex-shrink:0}
+  .pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:700;white-space:nowrap}
+  .tag{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:1px}
 
-  /* Lista compacta (recientes, activos, pendientes) */
-  .rowList{display:flex;flex-direction:column}
-  .lrow{display:flex;align-items:center;gap:10px;padding:10px 0;width:100%;text-align:left}
-  .lrow+.lrow{border-top:1px solid var(--border)}
-  .lrow .info{flex:1;min-width:0}
-  .lrow .t1{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .lrow .t2{font-size:11px;color:var(--tSecondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .lrow .amt{font-size:13px;font-weight:800;color:var(--tPrimary)}
-  .star{font-size:12px;color:var(--amber);font-weight:700}
+  /* Atención */
+  .alert{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;width:100%;text-align:left;transition:transform .15s var(--ease),filter .2s}
+  .alert:hover{transform:translateX(3px);filter:brightness(.98)}
+  .alert .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#fff8}
+  .alert b{font-size:20px;font-weight:900;margin-left:auto;font-variant-numeric:tabular-nums}
 
-  /* Cards genéricas */
-  .avatar{width:40px;height:40px;border-radius:50%;background:#2563EB22;color:var(--accent);
-    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;
-    object-fit:cover;flex-shrink:0}
-  .badge{border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap}
-  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-  .chev{font-size:20px;color:var(--tMuted)}
-  .empty{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;
-    text-align:center;font-size:13px;color:var(--tSecondary)}
-  .soonBox{background:var(--card);border:1px dashed var(--border);border-radius:16px;padding:48px 24px;
-    text-align:center;color:var(--tSecondary)}
-  .soonBox .em{font-size:40px}
-  .soonBox .t{font-size:16px;font-weight:800;color:var(--tPrimary);margin-top:8px}
-  .soonBox .d{font-size:13px;margin-top:4px}
+  /* Filtros */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:0 12px;height:44px;box-shadow:var(--sh1)}
+  .search:focus-within{border-color:var(--accent)}
+  .search input{flex:1;border:none;outline:none;font-size:14px;background:none;color:var(--t1)}
+  .search svg{color:var(--t3)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--border);background:#fff;font-weight:600;font-size:13px;color:var(--t2);display:inline-flex;align-items:center;gap:6px;transition:all .2s}
+  .chip:hover{border-color:#CBD5E1;color:var(--t1)}
+  .chip.on{background:var(--t1);border-color:var(--t1);color:#fff}
+  .chip i{font-style:normal;opacity:.6;font-size:12px}
 
-  /* User row (listas usuarios/solicitudes) */
-  .fila{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);
-    border-radius:14px;padding:12px;width:100%;text-align:left;margin-bottom:8px}
-  .filaInfo{flex:1;min-width:0}
-  .filaNombre{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .filaMeta{font-size:12px;color:var(--tSecondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* Tabla */
+  .tableWrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:720px}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);text-align:left;padding:12px 14px;font-weight:700;border-bottom:1px solid var(--border)}
+  td{padding:12px 14px;border-bottom:1px solid var(--border);white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  tbody tr{transition:background .15s}
+  tbody tr:hover{background:#F8FAFC}
 
-  /* Segmented + search */
-  .segmented{display:flex;background:var(--muted);border-radius:12px;padding:4px;gap:4px;max-width:360px}
-  .segment{flex:1;padding:9px 0;border-radius:9px;font-size:13px;font-weight:600;color:var(--tSecondary)}
-  .segment.active{background:var(--card);color:var(--tPrimary);font-weight:800;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-  .search{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);
-    border-radius:12px;padding:0 12px;height:44px;margin:10px 0}
-  .search input{flex:1;border:none;outline:none;font-size:14px;background:none;color:var(--tPrimary)}
-
-  .actCard{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);
-    border-radius:14px;padding:14px;margin-bottom:8px}
-  .actMain{flex:1;min-width:0}
-  .actTitle{font-size:14px;font-weight:700}
-  .actMeta{font-size:12px;color:var(--tSecondary);margin-top:3px}
-  .itemCard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;
-    display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
-  .cancelHeader{display:flex;justify-content:space-between;align-items:center}
-  .trash{padding:6px;font-size:15px;background:none}
+  /* Vacío / carga */
+  .empty{display:flex;flex-direction:column;align-items:center;gap:6px;padding:28px 16px;text-align:center;color:var(--t2)}
+  .empty .lot{width:120px;height:120px}
+  .empty b{color:var(--t1);font-size:15px}
+  .sk{border-radius:12px;background:linear-gradient(90deg,#EEF2F7 25%,#F8FAFC 50%,#EEF2F7 75%);background-size:200% 100%;animation:shimmer 1.2s linear infinite}
 
   /* Modal */
-  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;
-    justify-content:center;z-index:50;padding:16px}
-  .sheet{background:var(--bg);border-radius:20px;padding:18px;width:100%;max-width:520px;
-    max-height:92vh;overflow-y:auto}
-  .modalTop{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-  .modalName{font-size:18px;font-weight:800}
-  .modalRole{font-size:12px;color:var(--tSecondary);margin-top:2px}
-  .fotosRow{display:flex;gap:10px;margin-bottom:10px}
-  .foto{flex:1;text-align:center}
-  .foto .img{width:100%;height:84px;border-radius:12px;object-fit:cover;background:var(--muted);
-    display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid var(--border)}
-  .foto .perfilImg{width:70px;height:70px;border-radius:50%;margin:0 auto;object-fit:cover;
-    border:2px solid #2563EB44;background:var(--muted);display:flex;align-items:center;justify-content:center;font-size:22px}
-  .foto .lbl{font-size:10px;color:var(--tSecondary);font-weight:600;margin-top:4px}
-  .datos{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:0 14px;margin-bottom:14px}
-  .datoRow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0}
-  .datoRow+.datoRow{border-top:1px solid var(--border)}
-  .datoK{font-size:12px;color:var(--tMuted);font-weight:700}
-  .datoV{flex:1;font-size:13px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .acciones{display:flex;flex-wrap:wrap;gap:8px}
-  .accionBtn{flex:1 1 46%;min-width:120px;border:1px solid;border-radius:12px;padding:12px;
-    font-size:14px;font-weight:700;text-align:center}
-  .fotoPend{margin-top:12px;padding:12px;border:1px solid #F59E0B66;background:#F59E0B12;border-radius:14px}
-  .fotoPendTit{font-size:13px;font-weight:800;color:var(--orange);margin-bottom:10px}
-  .bAprobar{background:#22C55E18;border-color:#22C55E55;color:var(--green)}
-  .bRechazar{background:#EF444414;border-color:#EF444444;color:var(--red)}
-  .bRenovar{background:#2563EB14;border-color:#2563EB55;color:var(--accent)}
-  .bCambiar{background:#8B5CF614;border-color:#8B5CF655;color:#8B5CF6}
-  .bSuspender{background:#2563EB14;border-color:#2563EB44;color:var(--blue)}
-  .bEliminar{background:#EF444414;border-color:#EF444444;color:var(--red)}
-  .cerrar{margin-top:14px;padding:14px;width:100%;text-align:center;font-size:14px;
-    font-weight:700;color:var(--tSecondary)}
-  .loading{padding:60px;text-align:center;color:var(--tSecondary)}
+  .backdrop{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px;animation:fade .2s both}
+  .sheet{background:var(--bg);border-radius:22px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;box-shadow:var(--sh2);animation:pop .3s var(--ease) both}
+  .sheetHead{display:flex;align-items:center;gap:14px;padding:20px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1}
+  .sheetHead .x{margin-left:auto;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--t2)}
+  .sheetHead .x:hover{background:var(--muted)}
+  .sheetBody{padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px}
+  .fotos{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .foto{position:relative;border-radius:14px;overflow:hidden;background:var(--muted);aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;color:var(--t3);border:1px solid var(--border)}
+  .foto img{width:100%;height:100%;object-fit:cover;cursor:zoom-in;transition:transform .3s var(--ease)}
+  .foto img:hover{transform:scale(1.04)}
+  .foto span{position:absolute;left:8px;bottom:8px;background:rgba(15,23,42,.7);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px}
+  .datos{background:#fff;border:1px solid var(--border);border-radius:14px;padding:2px 14px}
+  .dato{display:flex;justify-content:space-between;gap:12px;padding:11px 0;font-size:13.5px}
+  .dato+.dato{border-top:1px solid var(--border)}
+  .dato .k{color:var(--t2);font-weight:600}
+  .dato .v{font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .acciones{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+  .acciones .btn{width:100%}
+  .peligro{display:flex;align-items:center;gap:12px;padding:14px;border:1px dashed #FCA5A5;border-radius:14px;background:#FFF8F8}
+  .peligro div{flex:1;min-width:0}
+  .peligro b{display:block;font-size:13.5px}
+  .peligro span{font-size:12px;color:var(--t2)}
+  .avBtn{border-radius:50%;cursor:zoom-in;transition:transform .2s var(--ease)}
+  .avBtn:hover{transform:scale(1.05)}
+  .confirm{max-width:400px;padding:24px;display:flex;flex-direction:column;gap:12px;background:#fff}
+  .confirm h3{font-size:18px;font-weight:800}
+  .confirm p{color:var(--t2);line-height:1.5}
+  .confirm .btns{display:flex;gap:10px;margin-top:6px}
+  .confirm .btns .btn{flex:1}
+  .lightbox{background:rgba(2,6,23,.92)}
+  .lightbox img{max-width:94vw;max-height:90vh;border-radius:14px;animation:pop .3s var(--ease) both}
 
-  /* Chat de soporte */
-  .chatSheet{display:flex;flex-direction:column;max-width:560px;height:80vh;padding:0}
+  /* Soporte */
+  .soporte{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 150px);min-height:480px;overflow:hidden}
+  .convs{border-right:1px solid var(--border);overflow-y:auto;padding:8px}
+  .conv.on{background:#2563EB12}
+  .chat{display:flex;flex-direction:column;min-width:0}
   .chatHead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
-  .chatBody{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
-  .chatRow{display:flex}
-  .chatRow.izq{justify-content:flex-start}
-  .chatRow.der{justify-content:flex-end}
-  .chatBubble{max-width:78%;border-radius:14px;padding:9px 12px;font-size:14px;line-height:1.35;position:relative}
-  .chatBubble.otro{background:var(--card);border:1px solid var(--border);border-top-left-radius:4px;color:var(--tPrimary)}
-  .chatBubble.mio{background:var(--accent);color:#fff;border-top-right-radius:4px}
-  .chatHora{display:block;font-size:10px;opacity:.7;text-align:right;margin-top:3px}
-  .chatInputRow{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card)}
-  .chatInput{flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;outline:none;background:var(--bg);color:var(--tPrimary)}
-  .chatSend{width:46px;border-radius:12px;background:var(--accent);color:#fff;font-size:18px;font-weight:800}
-
+  .chatBody{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
+  .msg{max-width:74%;padding:9px 13px;border-radius:16px;line-height:1.4;animation:up .3s var(--ease) both;word-wrap:break-word}
+  .msg.otro{align-self:flex-start;background:#fff;border:1px solid var(--border);border-top-left-radius:5px}
+  .msg.mio{align-self:flex-end;background:var(--accent);color:#fff;border-top-right-radius:5px}
+  .msg small{display:block;font-size:10.5px;opacity:.65;text-align:right;margin-top:3px}
+  .chatIn{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border)}
+  .chatIn input{flex:1;border:1px solid var(--border);border-radius:12px;padding:0 14px;height:44px;outline:none;background:var(--bg);font-size:14px}
+  .chatIn input:focus{border-color:var(--accent);background:#fff}
+  .back{display:none}
   @media(max-width:900px){
-    .sidebar{transform:translateX(-100%)}
-    .sidebar.open{transform:none}
-    .main{margin-left:0}
-    .hamb{display:flex}
-    .kpiGrid{grid-template-columns:repeat(2,1fr)}
-    .dashGrid,.dashGrid2{grid-template-columns:1fr}
-    .content{padding:14px 16px 48px}
-    .topbar{padding:16px}
+    .soporte{grid-template-columns:1fr;height:calc(100vh - 120px)}
+    .soporte.abierto .convs{display:none}
+    .soporte:not(.abierto) .chat{display:none}
+    .back{display:flex}
   }
+
+  /* Ruta del viaje (mapa) */
+  .sheet.ruta{max-width:780px}
+  .mapa{height:min(52vh,420px);background:#E5EEF9}
+  .pulso{width:18px;height:18px;border-radius:50%;border:3px solid #fff;animation:pulso 1.8s infinite}
+  @keyframes pulso{from{box-shadow:0 0 0 0 var(--c)}to{box-shadow:0 0 0 16px transparent}}
+  .inicio{width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid var(--c)}
+  .rastro{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid var(--border);border-radius:14px}
+  .rastro .punto{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+  .rastro div{flex:1;min-width:0}
+  .vivo{display:inline-flex;align-items:center;gap:8px;color:var(--red);font-weight:800;font-size:12px}
+  .vivo::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--red);--c:#DC262680;animation:pulso 1.4s infinite}
+
+  /* Toast */
+  #toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:80}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--t1);color:#fff;padding:12px 16px;border-radius:12px;box-shadow:var(--sh2);font-weight:600;animation:pop .3s var(--ease) both}
+  .toast.err{background:var(--red)}
 </style>
 </head>
 <body>
 
 <!-- ===== LOGIN ===== -->
 <div id="login">
-  <div class="iconBox">🔐</div>
-  <h1>Panel Admin</h1>
-  <div class="sub">RUTAEXPRESS · MONTALVO</div>
-  <input id="pwd" type="password" placeholder="Contraseña del administrador" autocomplete="current-password" />
-  <button id="loginBtn">Entrar →</button>
-  <div class="hint">Solo el administrador de RutaExpress tiene acceso</div>
+  <div class="loginArt"><div class="loginRadar"><div id="radar" style="width:360px;height:360px"></div><img src="assets/logo.png" alt=""></div></div>
+  <form class="loginForm" id="loginForm">
+    <h1>Panel Admin</h1>
+    <p class="sub">RutaExpress · Montalvo</p>
+    <label class="field"><i data-lucide="lock"></i><input id="pwd" type="password" placeholder="Contraseña del administrador" autocomplete="current-password" required></label>
+    <button class="btn pri full" id="loginBtn" type="submit">Entrar <i data-lucide="arrow-right"></i></button>
+    <p class="hint">Acceso exclusivo del administrador.</p>
+  </form>
 </div>
 
 <!-- ===== APP ===== -->
 <div id="app" class="hidden">
   <div class="layout">
-    <div class="overlay" id="overlay" onclick="toggleSidebar(false)"></div>
-    <aside class="sidebar" id="sidebar">
-      <div class="sbBrand">
-        <div class="logo">R</div>
-        <div><div class="name">RutaExpress</div><div class="tag">PANEL ADMIN · MONTALVO</div></div>
-      </div>
+    <div class="scrim" id="scrim" onclick="menu(false)"></div>
+    <aside class="side" id="side">
+      <div class="brand"><img src="assets/logo.png" alt=""><div><b>RutaExpress</b><span>Panel admin · Montalvo</span></div></div>
       <nav class="nav" id="nav"></nav>
-      <div class="sbUser">
-        <div class="av">A</div>
-        <div><div class="un">Admin</div><div class="ur">Administrador</div></div>
-        <button class="out" id="logoutBtn" title="Salir">⎋</button>
-      </div>
+      <div class="sideFoot"><div class="av">A</div><div><b>Admin</b><span>Administrador</span></div>
+        <button id="logoutBtn" title="Cerrar sesión"><i data-lucide="log-out"></i></button></div>
     </aside>
     <main class="main">
-      <div class="topbar">
-        <div style="display:flex;align-items:center;gap:12px">
-          <button class="hamb" onclick="toggleSidebar()">☰</button>
-          <div><h2 id="pageTitle">Dashboard</h2><div class="sub">Bienvenido, Admin 👋</div></div>
-        </div>
-        <div class="dateChip">📅 <span id="hoyChip"></span></div>
+      <div class="top">
+        <button class="hamb" onclick="menu()"><i data-lucide="menu"></i></button>
+        <div><h2 id="titulo">Inicio</h2><div class="sub" id="subtitulo"></div></div>
+        <div class="sp"></div>
+        <button class="btn soft sm" onclick="cargarTodo()" title="Actualizar"><i data-lucide="refresh-cw"></i><span>Actualizar</span></button>
       </div>
       <div class="content" id="content"></div>
     </main>
   </div>
 </div>
 
-<div id="modalRoot"></div>
+<div id="modal"></div>
+<div id="toasts"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- Librerías (versiones fijas) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 const SUPABASE_URL = 'https://cxbybueipinbbkydqoza.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4YnlidWVpcGluYmJreWRxb3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTYzODMsImV4cCI6MjA5NDg3MjM4M30.cTEHWlMQV0Ck144zJ2HI3LmpF_c03orApk2og5OHlrk';
 const ADMIN_EMAIL = 'samiralejandroduche48@gmail.com';
-const DIA = 86400000;
+const DIA = 86400000, TZ = 'America/Guayaquil';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// --- estado ---
-let tab = 'dashboard', subUsuarios = 'conductores', subActividad = 'viajes', busqueda = '';
-let conductores = [], pasajeros = [], viajes = [], cancelaciones = [], pagos = [], soporte = [], stats = {conductor:{},pasajero:{}}, ratings = {};
-let cargando = false;
-let chatAbierto = null; // {tipo, id} de la conversación abierta (conductor o pasajero)
-let _line = null, _donut = null, _ingresos = null;
-
-// Planes de suscripción (fijos). Para cambiar precios/beneficios, editar aquí.
+// Planes = los de la app (services/suscripcionService.js). El plan lo decide el vehículo.
 const PLANES = {
-  BASICO:  {nombre:'Básico',   precio:9.99,  color:'#22C55E', icon:'🚀', desc:'Ideal para comenzar',
-            features:['Hasta 30 viajes por mes','Soporte estándar','Acceso a la app']},
-  ESTANDAR:{nombre:'Estándar', precio:19.99, color:'#2563EB', icon:'⭐', desc:'Más viajes, más ganancias',
-            features:['Hasta 100 viajes por mes','Soporte prioritario','Promociones exclusivas']},
-  PREMIUM: {nombre:'Premium',  precio:29.99, color:'#8B5CF6', icon:'👑', desc:'Máximo rendimiento', popular:true,
-            features:['Viajes ilimitados','Soporte 24/7','Beneficios exclusivos']},
+  UNICO:  {nombre:'RutaExpress', precio:10, color:'#2563EB'},
+  BUSETA: {nombre:'RutaExpress Paseos', precio:15, color:'#EA7A00'},
 };
-const planInfo = k => PLANES[k] || null;
+const VEHICULOS = {
+  auto:      {nombre:'Auto', img:'assets/select-auto.png', plan:'UNICO'},
+  camioneta: {nombre:'Camioneta', img:'assets/select-camioneta.png', plan:'UNICO'},
+  buseta:    {nombre:'Buseta', img:'assets/select-buseta.png', plan:'BUSETA'},
+};
+const vehiculo = t => VEHICULOS[t] || VEHICULOS.auto;
+const planDe = c => PLANES[c.plan] ? c.plan : vehiculo(c.tipo_vehiculo).plan;
 
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fechaEC = d => new Date(d).toLocaleDateString('es-EC');
-const horaEC = d => new Date(d).toLocaleString('es-EC');
-const fmtMoney = n => '$' + Number(n||0).toLocaleString('es-EC',{minimumFractionDigits:2,maximumFractionDigits:2});
-
-// --- secciones del sidebar ---
 const NAV = [
-  {k:'dashboard',   l:'Dashboard',     ic:'📊', titulo:'Dashboard'},
-  {k:'viajes',      l:'Viajes',        ic:'🚗', titulo:'Viajes'},
-  {k:'pasajeros',   l:'Usuarios',      ic:'👥', titulo:'Usuarios (Pasajeros)'},
-  {k:'conductores', l:'Conductores',   ic:'🪪', titulo:'Conductores'},
-  {k:'solicitudes', l:'Solicitudes',   ic:'📥', titulo:'Solicitudes pendientes', badge:true},
-  {k:'suscripciones',l:'Suscripciones',ic:'🎫', titulo:'Suscripciones de Conductores', nuevo:true},
-  {k:'soporte',     l:'Soporte',       ic:'🎧', titulo:'Soporte (conductores y pasajeros)', badgeSoporte:true},
-  {k:'cancelaciones',l:'Cancelaciones',ic:'🚫', titulo:'Cancelaciones'},
-  {k:'vehiculos',   l:'Vehículos',     ic:'🚙', soon:true},
-  {k:'pagos',       l:'Pagos',         ic:'💵', soon:true},
-  {k:'reportes',    l:'Reportes',      ic:'📈', soon:true},
-  {k:'promociones', l:'Promociones',   ic:'🎁', soon:true},
-  {k:'notificaciones',l:'Notificaciones',ic:'🔔', soon:true},
+  {k:'inicio',        l:'Inicio',        ic:'layout-dashboard', sub:'Lo que necesita tu atención hoy'},
+  {k:'solicitudes',   l:'Solicitudes',   ic:'inbox',            sub:'Registros por revisar'},
+  {k:'conductores',   l:'Conductores',   ic:'id-card',          sub:'Gestiona conductores y su estado'},
+  {k:'pasajeros',     l:'Pasajeros',     ic:'users',            sub:'Usuarios que piden viajes'},
+  {k:'viajes',        l:'Viajes',        ic:'route',            sub:'Historial de viajes y cancelaciones'},
+  {k:'suscripciones', l:'Suscripciones', ic:'badge-dollar-sign',sub:'Pagos y vencimientos de conductores'},
+  {k:'soporte',       l:'Soporte',       ic:'message-circle',   sub:'Conversaciones con usuarios'},
 ];
 
-// --- auth ---
-sb.auth.getSession().then(({data}) => { if (data.session?.user?.email === ADMIN_EMAIL) entrar(); });
+// --- estado ---
+let tab = 'inicio', filtro = 'todos', busqueda = '', cargando = true, chat = null;
+let conductores = [], pasajeros = [], viajes = [], cancelaciones = [], pagos = [], soporte = [];
+const charts = [];
 
-$('loginBtn').onclick = async () => {
-  const password = $('pwd').value;
-  if (!password) return;
-  $('loginBtn').disabled = true; $('loginBtn').textContent = '...';
-  const {data, error} = await sb.auth.signInWithPassword({email: ADMIN_EMAIL, password});
-  $('loginBtn').disabled = false; $('loginBtn').textContent = 'Entrar →';
-  if (error || data.user?.email !== ADMIN_EMAIL) { alert('Contraseña incorrecta'); $('pwd').value=''; return; }
+// --- utilidades ---
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// La BD guarda timestamps sin zona en UTC: igual que parseFecha() de la app.
+const fecha = v => { if (!v) return null; let s = String(v).replace(' ', 'T'); if (!/[zZ]|[+-]\d\d:?\d\d$/.test(s)) s += 'Z'; const d = new Date(s); return isNaN(d) ? null : d; };
+const ts = v => fecha(v)?.getTime() || 0;
+const fFecha = v => fecha(v)?.toLocaleDateString('es-EC', {timeZone:TZ, day:'2-digit', month:'short', year:'numeric'}) || '—';
+const diaEC = v => fecha(v)?.toLocaleDateString('en-CA', {timeZone:TZ}) || '';
+const cuando = v => {
+  const d = fecha(v); if (!d) return '—';
+  const h = d.toLocaleTimeString('es-EC', {timeZone:TZ, hour:'2-digit', minute:'2-digit'});
+  if (diaEC(v) === diaEC(new Date())) return 'Hoy, ' + h;
+  return d.toLocaleDateString('es-EC', {timeZone:TZ, day:'2-digit', month:'short'}) + ', ' + h;
+};
+const money = n => '$' + Number(n || 0).toLocaleString('es-EC', {minimumFractionDigits:2, maximumFractionDigits:2});
+const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
+const ic = (n, extra = '') => `<i data-lucide="${n}" ${extra}></i>`;
+const hace = dias => Date.now() - dias * DIA;
+
+const avatar = (u, size = 40) => u?.foto_perfil_url
+  ? `<img class="av" style="width:${size}px;height:${size}px" src="${esc(u.foto_perfil_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'av',textContent:'${esc((u?.nombre_completo || '?')[0].toUpperCase())}'}))">`
+  : `<div class="av" style="width:${size}px;height:${size}px">${esc((u?.nombre_completo || '?')[0].toUpperCase())}</div>`;
+const pill = (txt, color, icon) => `<span class="pill" style="background:${color}17;color:${color}">${icon ? ic(icon, 'style="width:13px;height:13px"') : ''}${esc(txt)}</span>`;
+const vacio = (titulo, texto, lottie) => `<div class="empty">${lottie ? `<div class="lot" data-lottie="${lottie}"></div>` : ic('inbox', 'style="width:36px;height:36px;color:#CBD5E1"')}<b>${titulo}</b><span>${texto || ''}</span></div>`;
+
+const ESTADO = {APROBADO:['Activo','#16A34A'], PENDIENTE:['Pendiente','#EA7A00'], SUSPENDIDO:['Suspendido','#7C3AED'], RECHAZADO:['Rechazado','#DC2626']};
+const pillEstado = e => pill(...(ESTADO[e] || [e || '—', '#64748B']));
+const VIAJE = {COMPLETADO:['Completado','#16A34A'], 'EN CURSO':['En curso','#2563EB'], SOLICITADO:['Buscando','#EA7A00'], CANCELADO:['Cancelado','#DC2626']};
+const pillViaje = e => pill(...(VIAJE[e] || [e || '—', '#64748B']));
+
+function suscripcion(c){
+  if (!c.suscripcion_vence) return {txt:'Sin suscripción', color:'#64748B', clave:'sin'};
+  const dias = Math.ceil((ts(c.suscripcion_vence) - Date.now()) / DIA);
+  if (dias < 0) return {dias, txt:`Vencida hace ${plural(-dias, 'día', 'días')}`, color:'#DC2626', clave:'vencida'};
+  if (dias <= 3) return {dias, txt: dias === 0 ? 'Vence hoy' : `Vence en ${plural(dias, 'día', 'días')}`, color:'#EA7A00', clave:'porVencer'};
+  return {dias, txt:`Vence en ${dias} días`, color:'#16A34A', clave:'activa'};
+}
+const nombre = (lista, id) => lista.find(x => x.id === id)?.nombre_completo || '—';
+
+// --- toast / confirmación / lightbox ---
+function toast(msg, err){
+  const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : '');
+  t.innerHTML = ic(err ? 'alert-circle' : 'check-circle-2') + esc(msg); $('toasts').append(t); lucide.createIcons();
+  setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = 0; setTimeout(() => t.remove(), 300); }, 3200);
+}
+function confirmar({titulo, texto, ok = 'Confirmar', tipo = 'pri'}){
+  return new Promise(res => {
+    const capa = document.createElement('div'); capa.className = 'backdrop';
+    capa.innerHTML = `<div class="sheet confirm"><h3>${esc(titulo)}</h3><p>${texto}</p>
+      <div class="btns"><button class="btn soft" data-r="0">Cancelar</button><button class="btn ${tipo}" data-r="1">${esc(ok)}</button></div></div>`;
+    capa.onclick = e => { const r = e.target.closest('[data-r]')?.dataset.r ?? (e.target === capa ? '0' : null); if (r === null) return; capa.remove(); res(r === '1'); };
+    document.body.append(capa); capa.querySelector('[data-r="1"]').focus();
+  });
+}
+function verImagen(url){
+  const capa = document.createElement('div'); capa.className = 'backdrop lightbox';
+  capa.innerHTML = `<img src="${esc(url)}" alt="">`; capa.onclick = () => capa.remove(); document.body.append(capa);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const b = [...document.querySelectorAll('.backdrop')].pop(); if (b) b.click(); else cerrarModal(); } });
+
+// --- Lottie: monta todo [data-lottie] que aparezca ---
+function montarLottie(root = document){
+  root.querySelectorAll('[data-lottie]:not([data-on])').forEach(el => {
+    el.dataset.on = 1;
+    lottie.loadAnimation({container:el, renderer:'svg', loop:el.dataset.loop !== undefined, autoplay:true, path:el.dataset.lottie});
+  });
+}
+// --- contador animado para KPIs ---
+function contar(root = document){
+  root.querySelectorAll('[data-count]').forEach(el => {
+    const fin = Number(el.dataset.count), dinero = el.dataset.money !== undefined, t0 = performance.now(), dur = 700;
+    const paso = t => { const p = Math.min(1, Math.max(0, (t - t0) / dur)), v = fin * (1 - Math.pow(1 - p, 3));
+      el.textContent = dinero ? money(v) : Math.round(v).toLocaleString('es-EC'); if (p < 1) requestAnimationFrame(paso); };
+    requestAnimationFrame(paso);
+    setTimeout(() => paso(t0 + dur), dur + 150); // respaldo si rAF está pausado (pestaña en segundo plano)
+  });
+}
+
+// --- auth ---
+lottie.loadAnimation({container:$('radar'), renderer:'svg', loop:true, autoplay:true, path:'assets/buscando.json'});
+lucide.createIcons();
+sb.auth.getSession().then(({data}) => { if (data.session?.user?.email === ADMIN_EMAIL) entrar(); });
+$('loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const b = $('loginBtn'); b.disabled = true;
+  const {data, error} = await sb.auth.signInWithPassword({email:ADMIN_EMAIL, password:$('pwd').value});
+  b.disabled = false;
+  if (error || data.user?.email !== ADMIN_EMAIL) { toast('Contraseña incorrecta', true); $('pwd').value = ''; return; }
   entrar();
 };
-$('pwd').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
-$('logoutBtn').onclick = async () => { await sb.auth.signOut(); $('app').classList.add('hidden'); $('login').classList.remove('hidden'); };
+$('logoutBtn').onclick = async () => { await sb.auth.signOut({scope:'local'}); location.reload(); };
 
-let _rtSoporte = null;
+let realtime = null;
 function entrar(){
-  $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('hoyChip').textContent = fechaEC(Date.now()); cargarTodo();
-  // Realtime: mensajes de soporte nuevos llegan al instante.
-  if (!_rtSoporte) {
-    _rtSoporte = sb.channel('rt-soporte')
-      .on('postgres_changes', {event:'*', schema:'public', table:'soporte_mensajes'}, recargarSoporte)
-      .subscribe();
-  }
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  cargarTodo();
+  realtime ??= sb.channel('admin-soporte')
+    .on('postgres_changes', {event:'*', schema:'public', table:'soporte_mensajes'}, recargarSoporte).subscribe();
+}
+function menu(abrir){
+  const open = abrir ?? !$('side').classList.contains('open');
+  $('side').classList.toggle('open', open); $('scrim').classList.toggle('show', open);
 }
 
-async function recargarSoporte(){
-  const { data } = await sb.from('soporte_mensajes').select('*').order('fecha',{ascending:true});
-  soporte = data || [];
-  if (tab === 'soporte') render();
-  if (chatAbierto) pintarChat(chatAbierto);
-}
-
-function toggleSidebar(force){
-  const sb = $('sidebar'), ov = $('overlay');
-  const open = force === undefined ? !sb.classList.contains('open') : force;
-  sb.classList.toggle('open', open); ov.classList.toggle('show', open);
-}
-
-// --- datos --- (bajo volumen: se carga todo y se deriva en cliente)
+// --- datos (volumen de un cantón: se carga todo y se filtra en el navegador) ---
+// ponytail: si algún día hay miles de filas, paginar y mover conteos a SQL.
 async function cargarTodo(){
   cargando = true; render();
-  const [c,p,v,can,pg,sop] = await Promise.all([
-    sb.from('conductores').select('*').order('fecha_registro',{ascending:false}),
-    sb.from('pasajeros').select('*').order('fecha_registro',{ascending:false}),
-    sb.from('viajes').select('id,origen,destino,fecha_hora,tarifa,estado,conductor_id,pasajero_id,calificacion_conductor').order('fecha_hora',{ascending:false}),
-    sb.from('cancelaciones').select('*, viaje:viajes(origen,destino)').order('fecha_hora',{ascending:false}).limit(100),
-    sb.from('pagos_suscripcion').select('*').order('fecha',{ascending:false}).limit(300),
-    sb.from('soporte_mensajes').select('*').order('fecha',{ascending:true}),
+  const [c, p, v, can, pg, sop] = await Promise.all([
+    sb.from('conductores').select('*').order('fecha_registro', {ascending:false}),
+    sb.from('pasajeros').select('*').order('fecha_registro', {ascending:false}),
+    sb.from('viajes').select('id,origen,destino,fecha_hora,tarifa,estado,conductor_id,pasajero_id,tipo_vehiculo,calificacion_conductor,ultima_lat,ultima_lng,ultima_ubicacion_at').order('fecha_hora', {ascending:false}),
+    sb.from('cancelaciones').select('*').order('fecha_hora', {ascending:false}).limit(300),
+    sb.from('pagos_suscripcion').select('*').order('fecha', {ascending:false}).limit(500),
+    sb.from('soporte_mensajes').select('*').order('fecha', {ascending:true}),
   ]);
-  conductores = c.data || []; pasajeros = p.data || []; viajes = v.data || []; cancelaciones = can.data || []; pagos = pg.data || []; soporte = sop.data || [];
-  const cc = {}, pp = {}, rt = {};
-  const sumar = (m,id,e) => { if(!id)return; m[id]=m[id]||{total:0,completados:0}; m[id].total++; if(e==='COMPLETADO')m[id].completados++; };
-  viajes.forEach(x => {
-    sumar(cc,x.conductor_id,x.estado); sumar(pp,x.pasajero_id,x.estado);
-    if (x.conductor_id && x.calificacion_conductor != null){ rt[x.conductor_id]=rt[x.conductor_id]||{s:0,n:0}; rt[x.conductor_id].s+=x.calificacion_conductor; rt[x.conductor_id].n++; }
-  });
-  stats = {conductor:cc, pasajero:pp}; ratings = rt;
+  const err = [c, p, v, can, pg, sop].find(r => r.error);
+  if (err) toast('Error cargando datos: ' + err.error.message, true);
+  conductores = c.data || []; pasajeros = p.data || []; viajes = v.data || [];
+  cancelaciones = can.data || []; pagos = pg.data || []; soporte = sop.data || [];
   cargando = false; render();
+}
+async function recargarSoporte(){
+  const {data} = await sb.from('soporte_mensajes').select('*').order('fecha', {ascending:true});
+  soporte = data || []; render();
 }
 
 // --- acciones ---
-function sumarUnMes(desde){
-  const base = desde && new Date(desde) > new Date() ? new Date(desde) : new Date();
-  base.setMonth(base.getMonth()+1); return base;
-}
-async function cambiarEstadoConductor(c, estado){
-  const msg = {APROBADO:`¿Aprobar a ${c.nombre_completo}? Se activa 1 mes de servicio.`,
-    RECHAZADO:`¿Rechazar a ${c.nombre_completo}?`, SUSPENDIDO:`¿Suspender a ${c.nombre_completo}?`}[estado];
-  if (!confirm(msg)) return;
-  const {error} = await sb.from('conductores').update({
-    estado, verificado: estado==='APROBADO',
-    fecha_aprobacion: estado==='APROBADO' ? new Date().toISOString() : null,
-    ...(estado==='APROBADO' ? {suscripcion_inicio: new Date().toISOString(), suscripcion_vence: sumarUnMes().toISOString()} : {}),
-  }).eq('id', c.id);
-  if (error) alert('No se pudo actualizar el estado'); else { cerrarModal(); cargarTodo(); }
-}
-// Aprobar/rechazar la foto de perfil que el conductor subió y quedó pendiente.
-// Aprobar la mueve a foto_perfil_url (la que ven todos); rechazar la descarta.
-async function resolverFotoPendiente(id, aprobar){
-  const c = conductores.find(x=>x.id===id); if(!c) return;
-  if (!confirm(aprobar ? '¿Aprobar la nueva foto? Reemplazará la foto de perfil actual.' : '¿Rechazar la nueva foto? Se descartará.')) return;
-  const upd = aprobar
-    ? {foto_perfil_url: c.foto_perfil_pendiente, foto_perfil_pendiente: null}
-    : {foto_perfil_pendiente: null};
-  const {error} = await sb.from('conductores').update(upd).eq('id', id);
-  if (error) alert('No se pudo actualizar la foto'); else { cerrarModal(); cargarTodo(); }
-}
-async function cambiarEstadoPasajero(p, estado){
-  if (!confirm(`¿Cambiar estado de ${p.nombre_completo} a ${estado}?`)) return;
-  const {error} = await sb.from('pasajeros').update({
-    estado, verificado: estado==='APROBADO',
-    fecha_aprobacion: estado==='APROBADO' ? new Date().toISOString() : null,
-  }).eq('id', p.id);
-  if (!error) { cerrarModal(); cargarTodo(); }
-}
-async function eliminar(id, tabla){
-  if (!confirm('¿Estás seguro? Esta acción no se puede deshacer.')) return;
-  const {error} = await sb.from(tabla).delete().eq('id', id);
-  if (error) alert('No se pudo eliminar: ' + error.message); else { cerrarModal(); cargarTodo(); }
-}
+const unMesDesde = desde => { const b = desde && ts(desde) > Date.now() ? fecha(desde) : new Date(); b.setMonth(b.getMonth() + 1); return b.toISOString(); };
 
-// --- helpers ---
-function infoSuscripcion(vence){
-  if (!vence) return null;
-  const dias = Math.ceil((new Date(vence) - new Date()) / DIA);
-  if (dias < 0) return {dias, texto:`Vencida hace ${-dias}d`, color:'var(--red)', vencida:true};
-  if (dias <= 3) return {dias, texto: dias===0?'Vence hoy':`Vence en ${dias}d`, color:'var(--orange)', porVencer:true};
-  return {dias, texto:`Vence en ${dias}d`, color:'var(--green)'};
-}
-const estadoColor = e => ({APROBADO:'var(--green)',RECHAZADO:'var(--red)',SUSPENDIDO:'var(--blue)',PENDIENTE:'var(--orange)'}[e]||'var(--tSecondary)');
-const viajeColor = e => ({COMPLETADO:'var(--green)','EN CURSO':'var(--blue)',SOLICITADO:'var(--orange)',CANCELADO:'var(--red)'}[e]||'var(--tSecondary)');
-const countViajes = (dias,estado) => viajes.filter(v => (!estado||v.estado===estado) && Date.now()-new Date(v.fecha_hora).getTime() <= dias*DIA).length;
-const countCancel = dias => cancelaciones.filter(c => Date.now()-new Date(c.fecha_hora).getTime() <= dias*DIA).length;
-const nombreCond = id => conductores.find(c=>c.id===id)?.nombre_completo || '—';
-const nombrePas = id => pasajeros.find(p=>p.id===id)?.nombre_completo || '—';
-const ratingCond = id => { const r=ratings[id]; return r&&r.n?(r.s/r.n).toFixed(1):null; };
-
-const coincide = u => {
-  const q = busqueda.trim().toLowerCase();
-  if (!q) return true;
-  return [u.nombre_completo,u.cedula,u.placa,u.email].filter(Boolean).some(x => String(x).toLowerCase().includes(q));
-};
-
-// métricas de una ventana semanal (off=0 últimos 7 días, off=1 semana previa)
-function metricasSemana(off){
-  const hasta = Date.now() - off*7*DIA, desde = hasta - 7*DIA;
-  const vs = viajes.filter(v => { const t=new Date(v.fecha_hora).getTime(); return t>desde && t<=hasta; });
-  return {
-    viajes: vs.length,
-    usuarios: new Set(vs.map(v=>v.pasajero_id).filter(Boolean)).size,
-    conductores: new Set(vs.map(v=>v.conductor_id).filter(Boolean)).size,
-    ingresos: vs.filter(v=>v.estado==='COMPLETADO').reduce((s,v)=>s+Number(v.tarifa||0),0),
-  };
-}
-function delta(act, prev){
-  if (prev === 0) return act>0 ? {pct:'100.0', up:true} : null;
-  const d = (act-prev)/prev*100;
-  return {pct:Math.abs(d).toFixed(1), up:d>=0};
-}
-function cuando(d){
-  const f=new Date(d), h=new Date(), t=f.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
-  return f.toDateString()===h.toDateString() ? ('Hoy, '+t)
-    : (f.toLocaleDateString('es-EC',{day:'2-digit',month:'short'})+', '+t);
-}
-const estadoBonito = e => ({COMPLETADO:'Completado','EN CURSO':'En curso',SOLICITADO:'Solicitado',CANCELADO:'Cancelado'}[e]||e);
-const badgeViaje = e => ({COMPLETADO:'var(--green)','EN CURSO':'var(--blue)',SOLICITADO:'var(--orange)',CANCELADO:'var(--orange)'}[e]||'var(--tSecondary)');
-
-// serie de los últimos n días: completados vs cancelados
-function serieDias(n){
-  const labels=[], comp=[], canc=[];
-  for(let i=n-1;i>=0;i--){
-    const d=new Date(Date.now()-i*DIA), key=d.toDateString();
-    labels.push(d.toLocaleDateString('es-EC',{day:'2-digit',month:'2-digit'}));
-    comp.push(viajes.filter(v=>v.estado==='COMPLETADO'&&new Date(v.fecha_hora).toDateString()===key).length);
-    canc.push(viajes.filter(v=>v.estado==='CANCELADO'&&new Date(v.fecha_hora).toDateString()===key).length);
-  }
-  return {labels,comp,canc};
-}
-
-// --- componentes HTML ---
-const avatar = (uri,nombre,size=40) => uri
-  ? `<img class="avatar" style="width:${size}px;height:${size}px" src="${esc(uri)}" onerror="this.outerHTML='<div class=avatar style=width:${size}px;height:${size}px>${esc((nombre||'?')[0].toUpperCase())}</div>'">`
-  : `<div class="avatar" style="width:${size}px;height:${size}px">${esc((nombre||'?')[0].toUpperCase())}</div>`;
-
-function filaUsuario(u, tipo){
-  const s = tipo==='conductor' ? infoSuscripcion(u.suscripcion_vence) : null;
-  const meta = tipo==='conductor' ? `Placa ${esc(u.placa||'—')}` : `CI ${esc(u.cedula||'—')}`;
-  const sTxt = s ? `  ·  <span style="color:${s.color};font-weight:700">${s.texto}</span>` : '';
-  return `<button class="fila" onclick="abrirDetalle('${u.id}','${tipo}')">
-    ${avatar(u.foto_perfil_url,u.nombre_completo)}
-    <div class="filaInfo"><div class="filaNombre">${esc(u.nombre_completo)}</div>
-      <div class="filaMeta">${meta}${sTxt}</div></div>
-    <div class="dot" style="background:${estadoColor(u.estado)}"></div><div class="chev">›</div>
-  </button>`;
-}
-
-function kpiCard(icon,bg,color,val,lbl,d){
-  const dh = d
-    ? `<div class="kpiDelta ${d.up?'up':'down'}">${d.up?'▲':'▼'} ${d.pct}% <span>vs sem. anterior</span></div>`
-    : `<div class="kpiDelta muted">Sin datos previos</div>`;
-  return `<div class="kpiCard">
-    <div class="kpiIcon" style="background:${bg};color:${color}">${icon}</div>
-    <div style="flex:1;min-width:0"><div class="kpiLbl">${lbl}</div><div class="kpiVal">${val}</div>${dh}</div>
-  </div>`;
-}
-
-// --- render principal ---
-function render(){
-  if (_line){ _line.destroy(); _line=null; }
-  if (_donut){ _donut.destroy(); _donut=null; }
-  if (_ingresos){ _ingresos.destroy(); _ingresos=null; }
-
-  const pendC = conductores.filter(c=>c.estado==='PENDIENTE');
-  const pendP = pasajeros.filter(p=>p.estado==='PENDIENTE');
-  const pendTotal = pendC.length + pendP.length;
-
-  // sidebar
-  const soporteNoLeidos = new Set(soporte.filter(m => m.remitente!=='admin' && !m.leido_admin).map(m => m.pasajero_id?'p:'+m.pasajero_id:'c:'+m.conductor_id)).size;
-  $('nav').innerHTML = NAV.map(n => n.soon
-    ? `<div class="navItem soon"><span class="ic">${n.ic}</span>${n.l}<span class="soonTag">Pronto</span></div>`
-    : `<button class="navItem ${tab===n.k?'active':''}" onclick="irTab('${n.k}')">
-        <span class="ic">${n.ic}</span>${n.l}
-        ${n.badge&&pendTotal?`<span class="navBadge">${pendTotal}</span>`:''}
-        ${n.badgeSoporte&&soporteNoLeidos?`<span class="navBadge">${soporteNoLeidos}</span>`:''}
-        ${n.nuevo?`<span class="navNuevo">Nuevo</span>`:''}</button>`
-  ).join('');
-  $('pageTitle').textContent = (NAV.find(n=>n.k===tab)?.titulo) || 'Dashboard';
-
-  if (cargando) { $('content').innerHTML = `<div class="loading">Cargando…</div>`; return; }
-  let h = '';
-
-  if (tab === 'dashboard') h = vistaDashboard(pendC, pendP, pendTotal);
-  else if (tab === 'solicitudes') h = vistaSolicitudes(pendC, pendP, pendTotal);
-  else if (tab === 'suscripciones') h = vistaSuscripciones();
-  else if (tab === 'soporte') h = vistaSoporte();
-  else if (tab === 'conductores' || tab === 'pasajeros') h = vistaUsuarios();
-  else if (tab === 'viajes') h = vistaViajes();
-  else if (tab === 'cancelaciones') h = vistaCancelaciones();
-  else h = vistaProximamente();
-
-  $('content').innerHTML = h;
-
-  if (tab === 'dashboard') dibujarGraficos();
-  if (tab === 'suscripciones') dibujarIngresos();
-  const bi = $('buscar');
-  if (bi) bi.oninput = e => { busqueda = e.target.value; const pos = e.target.selectionStart; render(); const n=$('buscar'); if(n){n.focus(); n.setSelectionRange(pos,pos);} };
-}
-
-function vistaDashboard(pendC, pendP, pendTotal){
-  const ingresos = viajes.filter(v=>v.estado==='COMPLETADO').reduce((s,v)=>s+Number(v.tarifa||0),0);
-  const condActivos = conductores.filter(c=>c.estado==='APROBADO');
-  const pasActivos = pasajeros.filter(p=>p.estado==='APROBADO');
-  const sA = metricasSemana(0), sB = metricasSemana(1);
-
-  let h = `<div class="kpiGrid">
-    ${kpiCard('🚗','#2563EB1A','#2563EB', viajes.length.toLocaleString('es-EC'), 'Viajes totales', delta(sA.viajes,sB.viajes))}
-    ${kpiCard('👥','#22C55E1A','#16A34A', pasActivos.length.toLocaleString('es-EC'), 'Usuarios activos', delta(sA.usuarios,sB.usuarios))}
-    ${kpiCard('🪪','#6366F11A','#6366F1', condActivos.length.toLocaleString('es-EC'), 'Conductores activos', delta(sA.conductores,sB.conductores))}
-    ${kpiCard('💵','#F59E0B1A','#D97706', fmtMoney(ingresos), 'Ingresos en efectivo', delta(sA.ingresos,sB.ingresos))}
-  </div>`;
-
-  // línea + viajes recientes (estilo referencia)
-  const recientes = viajes.slice(0,6).map(v => {
-    const col = badgeViaje(v.estado);
-    return `<div class="rrow">
-      ${avatar(null, nombrePas(v.pasajero_id), 34)}
-      <div class="rinfo"><div class="rname">${esc(nombrePas(v.pasajero_id))}</div>
-        <div class="rid">ID: #${esc(String(v.id).slice(0,6).toUpperCase())}</div></div>
-      <span class="badge" style="background:${col}1A;color:${col}">${esc(estadoBonito(v.estado))}</span>
-      <div class="rtime">${esc(cuando(v.fecha_hora))}</div>
-      <div class="rright"><div class="ramt">${fmtMoney(v.tarifa)}</div><div class="rpay">Efectivo</div></div>
-    </div>`;
-  }).join('') || `<div class="empty" style="border:none">Aún no hay viajes</div>`;
-
-  h += `<div class="dashGrid">
-    <div class="panel">
-      <div class="panelHead"><div class="panelTitle">Viajes</div>
-        <div class="actMeta">Últimos 14 días</div></div>
-      <div class="chartBox"><canvas id="cLinea"></canvas></div>
-    </div>
-    <div class="panel">
-      <div class="panelHead"><div class="panelTitle">Viajes recientes</div>
-        <button class="panelLink" onclick="irTab('viajes')">Ver todos</button></div>
-      <div class="rowList">${recientes}</div>
-    </div>
-  </div>`;
-
-  // distribución (dona) + conductores activos + solicitudes
-  const activos = condActivos
-    .map(c => ({c, n: (stats.conductor[c.id]?.completados)||0, r: ratingCond(c.id)}))
-    .sort((a,b)=>b.n-a.n).slice(0,5)
-    .map(({c,n,r}) => `<button class="lrow" onclick="abrirDetalle('${c.id}','conductor')">
-      ${avatar(c.foto_perfil_url, c.nombre_completo, 36)}
-      <div class="info"><div class="t1">${esc(c.nombre_completo)}</div>
-        <div class="t2">${n} ${n===1?'viaje':'viajes'} · ${esc(c.placa||'—')}</div></div>
-      ${r?`<span class="star">⭐ ${r}</span>`:''}
-    </button>`).join('') || `<div class="empty" style="border:none">Sin conductores activos</div>`;
-
-  let pend = '';
-  if (!pendTotal) pend = `<div class="empty" style="border:none">Sin pendientes 🎉</div>`;
-  else pend = [...pendC.map(c=>({u:c,t:'conductor'})), ...pendP.map(p=>({u:p,t:'pasajero'}))].slice(0,5)
-    .map(({u,t}) => `<button class="lrow" onclick="abrirDetalle('${u.id}','${t}')">
-      ${avatar(u.foto_perfil_url, u.nombre_completo, 36)}
-      <div class="info"><div class="t1">${esc(u.nombre_completo)}</div>
-        <div class="t2">${t==='conductor'?'Conductor':'Pasajero'} · ${esc(u.cedula||'—')}</div></div>
-      <span class="badge" style="background:#FF8A001A;color:var(--orange)">Pendiente</span>
-    </button>`).join('');
-
-  const dComp = viajes.filter(v=>v.estado==='COMPLETADO').length;
-  const dCanc = viajes.filter(v=>v.estado==='CANCELADO').length;
-  const dProg = viajes.filter(v=>v.estado==='EN CURSO'||v.estado==='SOLICITADO').length;
-  const dTot = dComp+dCanc+dProg;
-  window._dona = {comp:dComp, canc:dCanc, prog:dProg};
-  const pctD = n => dTot ? Math.round(n/dTot*100) : 0;
-  const legenda = [['Completados','#2563EB',dComp],['Cancelados','#FF8A00',dCanc],['En progreso','#94A3B8',dProg]]
-    .map(([l,c,n]) => `<div class="dlRow"><span class="dlDot" style="background:${c}"></span>
-      <span class="dlLbl">${l}</span><span class="dlPct">${pctD(n)}%</span><span class="dlCnt">(${n})</span></div>`).join('');
-
-  h += `<div class="dashGrid2">
-    <div class="panel">
-      <div class="panelHead"><div class="panelTitle">Distribución de viajes</div></div>
-      <div class="donutWrap">
-        <div class="donutCanvas"><canvas id="cDona"></canvas>
-          <div class="donutCenter"><b>${dTot.toLocaleString('es-EC')}</b><span>Total</span></div></div>
-        <div class="donutLegend">${legenda}</div>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panelHead"><div class="panelTitle">Conductores activos</div>
-        <button class="panelLink" onclick="irTab('conductores')">Ver todos</button></div>
-      <div class="rowList">${activos}</div>
-    </div>
-    <div class="panel">
-      <div class="panelHead"><div class="panelTitle">Solicitudes pendientes</div>
-        ${pendTotal?`<button class="panelLink" onclick="irTab('solicitudes')">Revisar</button>`:''}</div>
-      <div class="rowList">${pend}</div>
-    </div>
-  </div>`;
-  return h;
-}
-
-function dibujarGraficos(){
-  const ctxL = $('cLinea'), ctxD = $('cDona');
-  if (ctxL){
-    const s = serieDias(14);
-    _line = new Chart(ctxL, {
-      type:'line',
-      data:{labels:s.labels, datasets:[
-        {label:'Completados', data:s.comp, borderColor:'#2563EB', backgroundColor:'#2563EB22',
-          tension:.35, fill:true, pointRadius:2},
-        {label:'Cancelados', data:s.canc, borderColor:'#EF4444', backgroundColor:'#EF444411',
-          tension:.35, fill:true, pointRadius:2},
-      ]},
-      options:{responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:true, position:'bottom', labels:{boxWidth:10, font:{size:11}}}},
-        scales:{y:{beginAtZero:true, ticks:{precision:0}}, x:{ticks:{maxRotation:0, autoSkip:true, maxTicksLimit:7, font:{size:10}}}}}
-    });
-  }
-  if (ctxD){
-    const d = window._dona || {comp:0,canc:0,prog:0};
-    _donut = new Chart(ctxD, {
-      type:'doughnut',
-      data:{labels:['Completados','Cancelados','En progreso'],
-        datasets:[{data:[d.comp,d.canc,d.prog], backgroundColor:['#2563EB','#FF8A00','#94A3B8'], borderWidth:0}]},
-      options:{responsive:true, maintainAspectRatio:false, cutout:'70%',
-        plugins:{legend:{display:false}}}
-    });
-  }
-}
-
-function vistaSolicitudes(pendC, pendP, pendTotal){
-  if (!pendTotal) return `<div class="empty">No hay solicitudes pendientes 🎉</div>`;
-  let h = '';
-  if (pendC.length) h += `<div class="sectionTitle">Conductores (${pendC.length})</div>` + pendC.map(c=>filaUsuario(c,'conductor')).join('');
-  if (pendP.length) h += `<div class="sectionTitle">Pasajeros (${pendP.length})</div>` + pendP.map(p=>filaUsuario(p,'pasajero')).join('');
-  return h;
-}
-
-const fechaCorta = d => new Date(d).toLocaleDateString('es-EC',{day:'2-digit',month:'short',year:'numeric'});
-
-function vistaSuscripciones(){
-  const activos = conductores.filter(c=>c.estado==='APROBADO');
-  const activas = activos.filter(c=>{const s=infoSuscripcion(c.suscripcion_vence); return s && !s.vencida;});
-  const porVencer = activos.filter(c=>{const s=infoSuscripcion(c.suscripcion_vence); return s && s.porVencer;});
-  const conPlan = activos.filter(c=>c.plan);
-  const pagosOk = pagos.filter(p=>p.estado==='PAGADO');
-  const ventana = (arr,campo,off)=>{const hasta=Date.now()-off*7*DIA, desde=hasta-7*DIA;
-    return arr.filter(x=>{const t=new Date(x[campo]).getTime(); return t>desde && t<=hasta;});};
-  const ing30 = pagosOk.filter(p=>Date.now()-new Date(p.fecha).getTime()<=30*DIA).reduce((s,p)=>s+Number(p.monto||0),0);
-  const sumar = a => a.reduce((s,p)=>s+Number(p.monto||0),0);
-  const dIng = delta(sumar(ventana(pagosOk,'fecha',0)), sumar(ventana(pagosOk,'fecha',1)));
-  const dAct = delta(ventana(activos,'suscripcion_inicio',0).length, ventana(activos,'suscripcion_inicio',1).length);
-
-  let h = `<div class="kpiGrid">
-    ${kpiCard('🎫','#2563EB1A','#2563EB', activas.length.toLocaleString('es-EC'), 'Suscripciones activas', dAct)}
-    ${kpiCard('💵','#22C55E1A','#16A34A', fmtMoney(ing30), 'Ingresos (30 días)', dIng)}
-    ${kpiCard('🪪','#8B5CF61A','#8B5CF6', conPlan.length.toLocaleString('es-EC'), 'Conductores con plan', dAct)}
-    <div class="kpiCard"><div class="kpiIcon" style="background:#F59E0B1A;color:#D97706">⏳</div>
-      <div style="flex:1"><div class="kpiLbl">Próximos a vencer</div><div class="kpiVal">${porVencer.length}</div>
-      <div class="kpiDelta" style="color:#D97706">Vigilar renovaciones</div></div></div>
-  </div>`;
-
-  // tabla de suscripciones
-  const filas = activos.slice().sort((a,b)=> new Date(a.suscripcion_vence||0) - new Date(b.suscripcion_vence||0)).map(c=>{
-    const s=infoSuscripcion(c.suscripcion_vence), pl=planInfo(c.plan);
-    const est = !s ? {t:'Sin datos',c:'var(--tMuted)'} : s.vencida ? {t:'Vencida',c:'var(--red)'}
-      : s.porVencer ? {t:'Próxima a vencer',c:'var(--orange)'} : {t:'Activa',c:'var(--green)'};
-    const prox = !s||s.vencida ? '—' : (fechaCorta(c.suscripcion_vence) + (s.dias===0?' (Hoy)':''));
-    return `<tr>
-      <td><div class="tdCond">${avatar(c.foto_perfil_url,c.nombre_completo,34)}
-        <div><div class="nm">${esc(c.nombre_completo)}</div><div class="id">ID: #COND-${esc(String(c.id).slice(0,4).toUpperCase())}</div></div></div></td>
-      <td>${pl?`<span class="planBadge" style="background:${pl.color}1A;color:${pl.color}">${pl.nombre}</span>`:'—'}</td>
-      <td><span class="estadoSub" style="color:${est.c}">● ${est.t}</span></td>
-      <td>${c.suscripcion_inicio?fechaCorta(c.suscripcion_inicio):'—'}</td>
-      <td>${c.suscripcion_vence?fechaCorta(c.suscripcion_vence):'—'}</td>
-      <td style="${s&&s.dias===0?'color:var(--orange);font-weight:700':''}">${prox}</td>
-      <td style="font-weight:800">${pl?fmtMoney(pl.precio):'—'}</td>
-      <td><button class="verBtn" onclick="abrirDetalle('${c.id}','conductor')">Ver detalles</button></td>
-    </tr>`;
-  }).join('');
-  h += `<div class="tablaWrap"><table class="subs">
-    <thead><tr><th>Conductor</th><th>Plan</th><th>Estado</th><th>Inicio</th><th>Vencimiento</th><th>Próximo pago</th><th>Monto</th><th>Acciones</th></tr></thead>
-    <tbody>${filas || `<tr><td colspan="8" style="text-align:center;color:var(--tSecondary);padding:24px">No hay conductores aprobados</td></tr>`}</tbody>
-  </table></div>`;
-
-  // tarjetas de planes
-  const planCards = Object.entries(PLANES).map(([k,p])=>{
-    const n = activos.filter(c=>c.plan===k).length;
-    return `<div class="planCard ${p.popular?'pop':''}">
-      ${p.popular?`<span class="planPopTag">Más popular</span>`:''}
-      <div class="planIco" style="background:${p.color}1A;color:${p.color}">${p.icon}</div>
-      <div><div class="planNom">${p.nombre}</div><div class="planDesc">${p.desc}</div></div>
-      <div class="planPrecio">${fmtMoney(p.precio)}<small>/mes</small></div>
-      <div style="display:flex;flex-direction:column;gap:7px">${p.features.map(f=>`<div class="planFeat"><b>✓</b> ${f}</div>`).join('')}</div>
-      <div class="planCount">${n} ${n===1?'conductor':'conductores'} en este plan</div>
-    </div>`;
-  }).join('');
-  h += `<div class="panelHead" style="margin-top:8px"><div class="panelTitle">Planes de suscripción</div></div>
-    <div class="planGrid">${planCards}</div>`;
-
-  // ingresos + transacciones
-  const txs = pagos.slice(0,6).map(p=>{
-    const c = conductores.find(x=>x.id===p.conductor_id), pl = planInfo(p.plan);
-    const ec = {PAGADO:'var(--green)',PENDIENTE:'var(--orange)',FALLIDO:'var(--red)'}[p.estado]||'var(--tSecondary)';
-    const et = {PAGADO:'Pagado',PENDIENTE:'Pendiente',FALLIDO:'Fallido'}[p.estado]||p.estado;
-    return `<div class="txRow">${avatar(c&&c.foto_perfil_url, c?c.nombre_completo:'?',34)}
-      <div class="txInfo"><div class="txN">${esc(c?c.nombre_completo:'Conductor')}</div>
-        <div class="txP">${pl?'Plan '+pl.nombre:'—'} · ${esc(cuando(p.fecha))}</div></div>
-      <div class="txRight"><div class="txAmt">${fmtMoney(p.monto)}</div>
-        <span class="badge" style="background:${ec}1A;color:${ec};font-size:10px">${et}</span></div>
-    </div>`;
-  }).join('') || `<div class="empty" style="border:none">Aún no hay transacciones</div>`;
-
-  h += `<div class="dashGrid">
-    <div class="panel"><div class="panelHead"><div class="panelTitle">Resumen de ingresos</div><div class="actMeta">Últimos 30 días</div></div>
-      <div style="font-size:22px;font-weight:900">${fmtMoney(ing30)}
-        ${dIng?`<span class="kpiDelta ${dIng.up?'up':'down'}" style="display:inline-flex">${dIng.up?'▲':'▼'} ${dIng.pct}%</span>`:''}</div>
-      <div class="chartBox" style="height:200px;margin-top:8px"><canvas id="cIngresos"></canvas></div></div>
-    <div class="panel"><div class="panelHead"><div class="panelTitle">Transacciones recientes</div></div>
-      <div class="rowList">${txs}</div></div>
-  </div>`;
-  return h;
-}
-
-function dibujarIngresos(){
-  const ctx = $('cIngresos'); if(!ctx) return;
-  const labels=[], data=[];
-  for(let i=29;i>=0;i--){
-    const d=new Date(Date.now()-i*DIA), key=d.toDateString();
-    labels.push(d.toLocaleDateString('es-EC',{day:'2-digit',month:'2-digit'}));
-    data.push(pagos.filter(p=>p.estado==='PAGADO'&&new Date(p.fecha).toDateString()===key).reduce((s,p)=>s+Number(p.monto||0),0));
-  }
-  _ingresos = new Chart(ctx,{type:'line',
-    data:{labels, datasets:[{label:'Ingresos', data, borderColor:'#2563EB', backgroundColor:'#2563EB22', tension:.35, fill:true, pointRadius:2}]},
-    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{y:{beginAtZero:true, ticks:{callback:v=>'$'+v}}, x:{ticks:{maxTicksLimit:6, font:{size:10}}}}}
+async function activarPlan(id, modo){ // modo: 'aprobar' | 'renovar'
+  const c = conductores.find(x => x.id === id); if (!c) return;
+  const k = planDe(c), plan = PLANES[k];
+  const ok = await confirmar({
+    titulo: modo === 'aprobar' ? `Aprobar a ${c.nombre_completo}` : `Renovar a ${c.nombre_completo}`,
+    texto: `Plan <b>${plan.nombre}</b> · <b>${money(plan.precio)}</b>. Se registra el pago y se ${modo === 'aprobar' ? 'activa' : 'suma'} 1 mes de servicio.`,
+    ok: modo === 'aprobar' ? 'Aprobar y cobrar' : 'Renovar y cobrar', tipo:'ok',
   });
-}
-
-// modal para elegir plan al aprobar/renovar (registra el pago)
-function modalPlan(cid, modo){
-  const c = conductores.find(x=>x.id===cid); if(!c) return;
-  const cards = Object.entries(PLANES).map(([k,p])=>`
-    <button class="planPick" onclick="ejecutarPlan('${cid}','${k}','${modo}')">
-      <span class="planPickIcon" style="background:${p.color}1A;color:${p.color}">${p.icon}</span>
-      <span class="planPickName">${p.nombre}</span>
-      <span class="planPickPrice">${fmtMoney(p.precio)}/mes</span>
-    </button>`).join('');
-  const titulo = modo==='aprobar' ? 'Aprobar y asignar plan' : modo==='cambiar' ? 'Cambiar de plan' : 'Renovar suscripción';
-  const sub = modo==='cambiar' ? 'Solo cambia el plan (no modifica fechas ni registra pago)' : 'se registra el pago del plan elegido';
-  $('modalRoot').innerHTML = `<div class="backdrop" onclick="if(event.target===this)cerrarModal()"><div class="sheet" style="max-width:420px">
-    <div class="modalName">${titulo}</div>
-    <div class="modalRole">${esc(c.nombre_completo)} · ${sub}</div>
-    <div class="planPickList">${cards}</div>
-    <button class="cerrar" onclick="cerrarModal()">Cancelar</button>
-  </div></div>`;
-}
-async function ejecutarPlan(cid, planKey, modo){
-  const c = conductores.find(x=>x.id===cid); if(!c) return;
-  const p = PLANES[planKey];
-  // Cambiar de plan: solo actualiza el nivel, sin tocar fechas ni registrar pago.
-  if (modo==='cambiar'){
-    const {error} = await sb.from('conductores').update({plan:planKey}).eq('id', cid);
-    if (error){ alert('No se pudo: '+error.message); return; }
-    cerrarModal(); cargarTodo();
-    return;
-  }
-  const venceBase = modo==='renovar' ? c.suscripcion_vence : null;
-  const upd = {plan:planKey, suscripcion_inicio:new Date().toISOString(), suscripcion_vence:sumarUnMes(venceBase).toISOString()};
-  if (modo==='aprobar'){ upd.estado='APROBADO'; upd.verificado=true; upd.fecha_aprobacion=new Date().toISOString(); }
-  const {error} = await sb.from('conductores').update(upd).eq('id', cid);
-  if (error){ alert('No se pudo: '+error.message); return; }
-  const {error:e2} = await sb.from('pagos_suscripcion').insert({conductor_id:cid, plan:planKey, monto:p.precio, estado:'PAGADO'});
-  if (e2) alert('Suscripción actualizada, pero el pago no se registró: '+e2.message);
+  if (!ok) return;
+  const upd = {plan:k, suscripcion_inicio:new Date().toISOString(), suscripcion_vence:unMesDesde(modo === 'renovar' ? c.suscripcion_vence : null)};
+  if (modo === 'aprobar') Object.assign(upd, {estado:'APROBADO', verificado:true, fecha_aprobacion:new Date().toISOString()});
+  const {error} = await sb.from('conductores').update(upd).eq('id', id);
+  if (error) return toast('No se pudo actualizar: ' + error.message, true);
+  const {error:e2} = await sb.from('pagos_suscripcion').insert({conductor_id:id, plan:k, monto:plan.precio, estado:'PAGADO'});
+  toast(e2 ? 'Suscripción activa, pero el pago no se registró' : `${modo === 'aprobar' ? 'Aprobado' : 'Renovado'} · ${money(plan.precio)}`, !!e2);
   cerrarModal(); cargarTodo();
 }
 
-const horaCorta = d => {
-  const f=new Date(d), h=new Date(), t=f.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
-  return f.toDateString()===h.toDateString() ? t : f.toLocaleDateString('es-EC',{day:'2-digit',month:'short'});
-};
-
-// --- Soporte: una conversación por usuario (conductor o pasajero) ---
-function vistaSoporte(){
-  const grupos = {};
-  soporte.forEach(m => {
-    const tipo = m.pasajero_id ? 'pasajero' : 'conductor';
-    const id = m.pasajero_id || m.conductor_id;
-    if (!id) return;
-    (grupos[tipo+':'+id] = grupos[tipo+':'+id] || {tipo, id, msgs:[]}).msgs.push(m);
-  });
-  const convs = Object.values(grupos).map(g => {
-    const ultimo = g.msgs[g.msgs.length-1];
-    const noLeidos = g.msgs.filter(m => m.remitente!=='admin' && !m.leido_admin).length;
-    const persona = (g.tipo==='conductor'?conductores:pasajeros).find(x=>x.id===g.id);
-    return { ...g, persona, ultimo, noLeidos };
-  }).sort((a,b) => new Date(b.ultimo.fecha) - new Date(a.ultimo.fecha));
-
-  if (!convs.length) return `<div class="empty">No hay conversaciones de soporte todavía 💬</div>`;
-  return convs.map(cv => `<button class="fila" onclick="abrirChat('${cv.tipo}','${cv.id}')">
-    ${avatar(cv.persona?.foto_perfil_url, cv.persona?.nombre_completo||'?')}
-    <div class="filaInfo">
-      <div class="filaNombre">${esc(cv.persona?.nombre_completo || (cv.tipo==='conductor'?'Conductor':'Pasajero'))}
-        <span style="font-size:10px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;background:${cv.tipo==='conductor'?'#dbeafe':'#dcfce7'};color:${cv.tipo==='conductor'?'var(--accent)':'var(--green)'}">${cv.tipo==='conductor'?'Conductor':'Pasajero'}</span></div>
-      <div class="filaMeta">${cv.ultimo.remitente==='admin'?'Tú: ':''}${esc(cv.ultimo.texto)}</div>
-    </div>
-    <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-      <span class="actMeta">${horaCorta(cv.ultimo.fecha)}</span>
-      ${cv.noLeidos?`<span class="navBadge">${cv.noLeidos}</span>`:''}
-    </div>
-  </button>`).join('');
+async function cambiarEstado(id, tipo, estado){
+  const tabla = tipo === 'conductor' ? 'conductores' : 'pasajeros';
+  const u = (tipo === 'conductor' ? conductores : pasajeros).find(x => x.id === id); if (!u) return;
+  const textos = {
+    RECHAZADO: ['Rechazar registro', `${esc(u.nombre_completo)} no podrá usar la app.`, 'Rechazar', 'solidRed'],
+    SUSPENDIDO: ['Suspender cuenta', `${esc(u.nombre_completo)} no podrá usar la app hasta que la reactives.`, 'Suspender', 'warn'],
+    APROBADO: ['Activar cuenta', `${esc(u.nombre_completo)} podrá volver a usar la app.`, 'Activar', 'ok'],
+  }[estado];
+  if (!await confirmar({titulo:textos[0], texto:textos[1], ok:textos[2], tipo:textos[3]})) return;
+  const upd = {estado, verificado: estado === 'APROBADO'};
+  if (estado === 'APROBADO' && !u.fecha_aprobacion) upd.fecha_aprobacion = new Date().toISOString();
+  const {error} = await sb.from(tabla).update(upd).eq('id', id);
+  if (error) return toast('No se pudo actualizar: ' + error.message, true);
+  toast('Estado actualizado'); cerrarModal(); cargarTodo();
 }
 
-async function abrirChat(tipo, id){
-  chatAbierto = {tipo, id};
-  pintarChat(chatAbierto);
-  // Marca como leídos los mensajes del usuario (no los del admin).
-  const col = tipo==='pasajero' ? 'pasajero_id' : 'conductor_id';
-  const hayNoLeidos = soporte.some(m => m[col]===id && m.remitente===tipo && !m.leido_admin);
-  if (hayNoLeidos){
-    await sb.from('soporte_mensajes').update({leido_admin:true}).eq(col, id).eq('remitente',tipo).eq('leido_admin', false);
-    soporte = soporte.map(m => (m[col]===id && m.remitente===tipo) ? {...m, leido_admin:true} : m);
-    if (tab==='soporte') render();
-  }
+async function eliminarUsuario(id, tipo){
+  const u = (tipo === 'conductor' ? conductores : pasajeros).find(x => x.id === id); if (!u) return;
+  if (!await confirmar({titulo:'Eliminar cuenta', texto:`Se borrará a <b>${esc(u.nombre_completo)}</b> de forma permanente. Esta acción no se puede deshacer.`, ok:'Eliminar', tipo:'solidRed'})) return;
+  const {error} = await sb.from(tipo === 'conductor' ? 'conductores' : 'pasajeros').delete().eq('id', id);
+  if (error) return toast('No se pudo eliminar: ' + error.message, true);
+  toast('Cuenta eliminada'); cerrarModal(); cargarTodo();
 }
 
-function pintarChat(conv){
-  const { tipo, id } = conv;
-  const col = tipo==='pasajero' ? 'pasajero_id' : 'conductor_id';
-  const persona = (tipo==='conductor'?conductores:pasajeros).find(x=>x.id===id);
-  const msgs = soporte.filter(m => m[col]===id).sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
-  const sub = tipo==='conductor'
-    ? (planInfo(persona?.plan)?'Plan '+planInfo(persona.plan).nombre:'Sin plan')
-    : 'Pasajero';
-  const burbujas = msgs.map(m => `<div class="chatRow ${m.remitente==='admin'?'der':'izq'}">
-    <div class="chatBubble ${m.remitente==='admin'?'mio':'otro'}">${esc(m.texto)}<span class="chatHora">${horaCorta(m.fecha)}</span></div>
-  </div>`).join('') || `<div class="empty" style="border:none">Sin mensajes aún</div>`;
-  $('modalRoot').innerHTML = `<div class="backdrop" onclick="if(event.target===this)cerrarChat()"><div class="sheet chatSheet">
-    <div class="chatHead">${avatar(persona?.foto_perfil_url, persona?.nombre_completo||'?',38)}
-      <div style="flex:1"><div class="modalName" style="font-size:16px">${esc(persona?.nombre_completo||(tipo==='conductor'?'Conductor':'Pasajero'))}</div>
-        <div class="modalRole">${esc(sub)}</div></div>
-      <button class="cerrar" style="margin:0;padding:8px 14px;width:auto" onclick="cerrarChat()">Cerrar</button></div>
-    <div class="chatBody" id="chatBody">${burbujas}</div>
-    <div class="chatInputRow">
-      <input id="chatInput" class="chatInput" placeholder="Escribe una respuesta…" autocomplete="off" onkeydown="if(event.key==='Enter')enviarSoporte('${tipo}','${id}')">
-      <button class="chatSend" onclick="enviarSoporte('${tipo}','${id}')">➤</button>
-    </div>
-  </div></div>`;
-  const body = $('chatBody'); if (body) body.scrollTop = body.scrollHeight;
-  const inp = $('chatInput'); if (inp) inp.focus();
+// --- navegación / render ---
+function ir(k, f = 'todos'){ tab = k; filtro = f; busqueda = ''; chat = null; menu(false); render(); window.scrollTo({top:0}); }
+function setFiltro(f){ filtro = f; render(); }
+
+function render(){
+  charts.splice(0).forEach(c => c.destroy());
+  const pend = conductores.filter(c => c.estado === 'PENDIENTE').length + pasajeros.filter(p => p.estado === 'PENDIENTE').length;
+  const noLeidos = conversaciones().reduce((s, c) => s + c.noLeidos, 0);
+  const badges = {solicitudes:pend, soporte:noLeidos};
+  $('nav').innerHTML = NAV.map(n => `<button class="navItem ${tab === n.k ? 'active' : ''}" onclick="ir('${n.k}')">${ic(n.ic)}${n.l}${badges[n.k] ? `<span class="navBadge">${badges[n.k]}</span>` : ''}</button>`).join('');
+  const n = NAV.find(x => x.k === tab);
+  $('titulo').textContent = n.l; $('subtitulo').textContent = n.sub;
+
+  // Conserva lo que se está escribiendo (búsqueda/chat) al redibujar.
+  const act = document.activeElement, idAct = act?.id, val = idAct ? act.value : null, pos = act?.selectionStart;
+  const chatTxt = $('chatTxt')?.value;
+
+  $('content').innerHTML = cargando ? esqueleto() : ({inicio, solicitudes, conductores:vistaConductores, pasajeros:vistaPasajeros, viajes:vistaViajes, suscripciones, soporte:vistaSoporte})[tab]();
+
+  if (chatTxt && $('chatTxt')) $('chatTxt').value = chatTxt;
+  if (idAct && $(idAct)) { const el = $(idAct); if (val != null) el.value = val; el.focus(); try { el.setSelectionRange(pos, pos); } catch {} }
+  $('buscar')?.addEventListener('input', e => { busqueda = e.target.value; render(); });
+  lucide.createIcons(); montarLottie($('content')); contar($('content'));
+  if (!cargando) { if (tab === 'inicio') graficoViajes(); if (tab === 'suscripciones') graficoIngresos(); }
+  const cb = $('chatBody'); if (cb) cb.scrollTop = cb.scrollHeight;
 }
 
-async function enviarSoporte(tipo, id){
-  const inp = $('chatInput'); const t = (inp?.value||'').trim(); if(!t) return;
-  inp.value = '';
-  const fila = tipo==='pasajero' ? {pasajero_id:id, remitente:'admin', texto:t} : {conductor_id:id, remitente:'admin', texto:t};
-  const { error } = await sb.from('soporte_mensajes').insert(fila);
-  if (error){ alert('No se pudo enviar: '+error.message); return; }
-  await recargarSoporte();
+const esqueleto = () => `<div class="grid4">${'<div class="sk" style="height:96px"></div>'.repeat(4)}</div>
+  <div class="grid2"><div class="sk" style="height:300px"></div><div class="sk" style="height:300px"></div></div>`;
+
+function kpi(i, icono, color, valor, label, d, dinero){
+  const dt = d === undefined ? '' : d === null ? `<div class="d neutral">Sin datos de la semana anterior</div>`
+    : typeof d === 'string' ? `<div class="d neutral">${d}</div>`
+    : `<div class="d ${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'} ${Math.abs(d).toFixed(0)}% <span class="neutral">vs periodo anterior</span></div>`;
+  return `<div class="card kpi in" style="--i:${i}"><div class="kpiIc" style="background:${color}17;color:${color}">${ic(icono)}</div>
+    <div style="min-width:0"><div class="l">${label}</div><div class="v" data-count="${valor}" ${dinero ? 'data-money' : ''}>0</div>${dt}</div></div>`;
 }
+const variacion = (a, b) => b ? (a - b) / b * 100 : (a ? 100 : null);
+const enVentana = (arr, campo, desde, hasta) => arr.filter(x => { const t = ts(x[campo]); return t > desde && t <= hasta; });
 
-function cerrarChat(){ chatAbierto = null; cerrarModal(); if (tab==='soporte') render(); }
+// ===== Inicio =====
+function inicio(){
+  const v7 = enVentana(viajes, 'fecha_hora', hace(7), Date.now()), v14 = enVentana(viajes, 'fecha_hora', hace(14), hace(7));
+  const pagosOk = pagos.filter(p => p.estado === 'PAGADO');
+  const ing30 = enVentana(pagosOk, 'fecha', hace(30), Date.now()).reduce((s, p) => s + Number(p.monto || 0), 0);
+  const activos = conductores.filter(c => c.estado === 'APROBADO');
+  const pendC = conductores.filter(c => c.estado === 'PENDIENTE'), pendP = pasajeros.filter(p => p.estado === 'PENDIENTE');
+  const vencidas = activos.filter(c => suscripcion(c).clave === 'vencida');
+  const porVencer = activos.filter(c => suscripcion(c).clave === 'porVencer');
+  const noLeidos = conversaciones().filter(c => c.noLeidos);
 
-function vistaUsuarios(){
-  const tipo = tab==='conductores' ? 'conductor' : 'pasajero';
-  const fuente = tab==='conductores' ? conductores : pasajeros;
-  const lista = fuente.filter(u=>u.estado!=='PENDIENTE').filter(coincide);
-  let h = `<div class="search">🔍<input id="buscar" value="${esc(busqueda)}" placeholder="Buscar por nombre, cédula, placa…" autocapitalize="none"></div>`;
-  h += lista.length ? lista.map(u=>filaUsuario(u,tipo)).join('')
-    : `<div class="empty">${busqueda?'Sin resultados para tu búsqueda':'No hay usuarios aún'}</div>`;
+  let h = `<div class="grid4">
+    ${kpi(0, 'route', '#2563EB', v7.length, 'Viajes (7 días)', variacion(v7.length, v14.length))}
+    ${kpi(1, 'wallet', '#16A34A', ing30, 'Ingresos por suscripciones (30 días)', 'Pagos registrados', true)}
+    ${kpi(2, 'id-card', '#7C3AED', activos.length, 'Conductores activos', `${plural(pasajeros.filter(p => p.estado === 'APROBADO').length, 'pasajero activo', 'pasajeros activos')}`)}
+    ${kpi(3, 'inbox', '#EA7A00', pendC.length + pendP.length, 'Solicitudes por revisar', pendC.length + pendP.length ? 'Revísalas en Solicitudes' : 'Todo al día')}
+  </div>`;
+
+  const atencion = [
+    [pendC.length + pendP.length, 'Registros por aprobar', `${plural(pendC.length, 'conductor', 'conductores')} · ${plural(pendP.length, 'pasajero', 'pasajeros')}`, 'user-check', '#EA7A00', "ir('solicitudes')"],
+    [vencidas.length, 'Suscripciones vencidas', 'Conductores que deben renovar', 'alert-triangle', '#DC2626', "ir('suscripciones','vencida')"],
+    [porVencer.length, 'Vencen en 3 días o menos', 'Avísales antes de que venzan', 'clock', '#D97706', "ir('suscripciones','porVencer')"],
+    [noLeidos.length, 'Chats sin responder', 'Mensajes nuevos de soporte', 'message-circle', '#2563EB', "ir('soporte')"],
+  ].filter(a => a[0]);
+  const listaAtencion = atencion.length
+    ? atencion.map(([n, t, s, i, c, fn], k) => `<button class="alert in" style="--i:${k + 4};background:${c}10;color:${c}" onclick="${fn}">
+        <span class="ic">${ic(i)}</span><span><div style="font-weight:800;color:var(--t1)">${t}</div><div class="muted">${s}</div></span><b>${n}</b></button>`).join('')
+    : vacio('Todo al día', 'No hay nada pendiente por ahora.', 'assets/completado.json');
+
+  const recientes = viajes.slice(0, 6).map(v => `<div class="row">
+      <img class="veh" src="${vehiculo(v.tipo_vehiculo).img}" alt="">
+      <div class="rowInfo"><div class="rowT">${esc(v.origen || 'Origen')} → ${esc(v.destino)}</div>
+        <div class="rowS">${esc(nombre(pasajeros, v.pasajero_id))} · ${cuando(v.fecha_hora)}</div></div>
+      <div class="rowR"><div class="amt">${money(v.tarifa)}</div>${pillViaje(v.estado)}</div></div>`).join('');
+
+  h += `<div class="grid2">
+    <div class="card pad in" style="--i:4"><div class="head"><h3>Viajes de los últimos 14 días</h3><span class="muted">Completados vs cancelados</span></div>
+      <div class="chart"><canvas id="gViajes"></canvas></div></div>
+    <div class="card pad in" style="--i:5"><div class="head"><h3>Necesita tu atención</h3></div>
+      <div style="display:flex;flex-direction:column;gap:8px">${listaAtencion}</div></div>
+  </div>
+  <div class="card pad in" style="--i:6"><div class="head"><h3>Viajes recientes</h3><button class="link" onclick="ir('viajes')">Ver todos</button></div>
+    <div class="rows">${recientes || vacio('Aún no hay viajes')}</div></div>`;
   return h;
 }
 
+function estiloGraficos(){
+  Chart.defaults.font.family = 'Inter, system-ui, sans-serif'; Chart.defaults.color = '#94A3B8';
+  Chart.defaults.plugins.tooltip.backgroundColor = '#0F172A'; Chart.defaults.plugins.tooltip.padding = 10; Chart.defaults.plugins.tooltip.cornerRadius = 10;
+}
+function serieDias(n, fn){
+  const labels = [], dias = [];
+  for (let i = n - 1; i >= 0; i--) { const d = new Date(Date.now() - i * DIA); dias.push(d.toLocaleDateString('en-CA', {timeZone:TZ})); labels.push(d.toLocaleDateString('es-EC', {timeZone:TZ, day:'2-digit', month:'short'})); }
+  return {labels, data: dias.map(fn)};
+}
+function graficoViajes(){
+  const ctx = $('gViajes'); if (!ctx) return; estiloGraficos();
+  const comp = serieDias(14, d => viajes.filter(v => v.estado === 'COMPLETADO' && diaEC(v.fecha_hora) === d).length);
+  const canc = serieDias(14, d => viajes.filter(v => v.estado === 'CANCELADO' && diaEC(v.fecha_hora) === d).length);
+  const g = ctx.getContext('2d').createLinearGradient(0, 0, 0, 250); g.addColorStop(0, '#2563EB33'); g.addColorStop(1, '#2563EB00');
+  charts.push(new Chart(ctx, {type:'line',
+    data:{labels:comp.labels, datasets:[
+      {label:'Completados', data:comp.data, borderColor:'#2563EB', backgroundColor:g, fill:true, tension:.4, pointRadius:0, pointHoverRadius:5, borderWidth:2.5},
+      {label:'Cancelados', data:canc.data, borderColor:'#F87171', borderDash:[5, 4], tension:.4, pointRadius:0, pointHoverRadius:5, borderWidth:2}]},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+      animation:{duration:900, easing:'easeOutQuart'},
+      plugins:{legend:{position:'bottom', labels:{usePointStyle:true, boxWidth:8, padding:16}}},
+      scales:{y:{beginAtZero:true, ticks:{precision:0}, grid:{color:'#EEF2F7'}, border:{display:false}}, x:{grid:{display:false}, ticks:{maxTicksLimit:7}}}}}));
+}
+
+// ===== Solicitudes =====
+function solicitudes(){
+  const items = [...conductores.filter(c => c.estado === 'PENDIENTE').map(u => ({u, t:'conductor'})),
+                 ...pasajeros.filter(p => p.estado === 'PENDIENTE').map(u => ({u, t:'pasajero'}))]
+    .sort((a, b) => ts(b.u.fecha_registro) - ts(a.u.fecha_registro));
+  if (!items.length) return `<div class="card in">${vacio('No hay solicitudes pendientes', 'Cuando alguien se registre, aparecerá aquí.', 'assets/completado.json')}</div>`;
+  return `<div class="card in"><div class="rows">${items.map(({u, t}, i) => `<button class="row in" style="--i:${i}" onclick="detalle('${u.id}','${t}')">
+    ${avatar(u, 44)}
+    <div class="rowInfo"><div class="rowT">${esc(u.nombre_completo)}<span class="tag" style="background:${t === 'conductor' ? '#2563EB14;color:#2563EB' : '#16A34A14;color:#16A34A'}">${t === 'conductor' ? 'Conductor' : 'Pasajero'}</span></div>
+      <div class="rowS">${t === 'conductor' ? `${vehiculo(u.tipo_vehiculo).nombre} · Placa ${esc(u.placa || '—')} · ` : ''}Registrado ${cuando(u.fecha_registro)}</div></div>
+    ${t === 'conductor' ? `<img class="veh" src="${vehiculo(u.tipo_vehiculo).img}" alt="">` : ''}
+    <span class="btn soft sm">Revisar ${ic('chevron-right')}</span></button>`).join('')}</div></div>`;
+}
+
+// ===== Conductores / Pasajeros =====
+const coincide = u => { const q = busqueda.trim().toLowerCase(); return !q || [u.nombre_completo, u.cedula, u.placa, u.email].some(x => String(x || '').toLowerCase().includes(q)); };
+const chips = (opciones) => `<div class="chips">${opciones.map(([k, l, n]) => `<button class="chip ${filtro === k ? 'on' : ''}" onclick="setFiltro('${k}')">${l}${n != null ? `<i>${n}</i>` : ''}</button>`).join('')}</div>`;
+const buscador = ph => `<label class="search">${ic('search')}<input id="buscar" value="${esc(busqueda)}" placeholder="${ph}" autocomplete="off"></label>`;
+
+function vistaConductores(){
+  const base = conductores.filter(c => c.estado !== 'PENDIENTE');
+  const f = {todos:() => true, activos:c => c.estado === 'APROBADO', vencidas:c => c.estado === 'APROBADO' && suscripcion(c).clave === 'vencida',
+    suspendidos:c => c.estado === 'SUSPENDIDO', rechazados:c => c.estado === 'RECHAZADO', buseta:c => c.tipo_vehiculo === 'buseta'};
+  const fil = f[filtro] || f.todos;
+  const lista = base.filter(fil).filter(coincide);
+  const op = [['todos', 'Todos'], ['activos', 'Activos'], ['vencidas', 'Suscripción vencida'], ['buseta', 'Busetas'], ['suspendidos', 'Suspendidos'], ['rechazados', 'Rechazados']]
+    .map(([k, l]) => [k, l, base.filter(f[k]).length]);
+  return `<div class="toolbar in">${buscador('Buscar por nombre, cédula, placa o email…')}</div>
+    <div class="in" style="--i:1">${chips(op)}</div>
+    <div class="card in" style="--i:2"><div class="rows">${lista.length ? lista.map((c, i) => {
+      const s = suscripcion(c);
+      return `<button class="row" onclick="detalle('${c.id}','conductor')">${avatar(c, 44)}
+        <div class="rowInfo"><div class="rowT">${esc(c.nombre_completo)}</div>
+          <div class="rowS">${vehiculo(c.tipo_vehiculo).nombre} · Placa ${esc(c.placa || '—')}${c.estado === 'APROBADO' ? ` · <span style="color:${s.color};font-weight:700">${s.txt}</span>` : ''}</div></div>
+        <img class="veh opt" src="${vehiculo(c.tipo_vehiculo).img}" alt="">
+        ${pillEstado(c.estado)}<span class="chev">${ic('chevron-right')}</span></button>`;
+    }).join('') : vacio(busqueda ? 'Sin resultados' : 'No hay conductores en este filtro')}</div></div>`;
+}
+
+function vistaPasajeros(){
+  const base = pasajeros.filter(p => p.estado !== 'PENDIENTE');
+  const f = {todos:() => true, activos:p => p.estado === 'APROBADO', suspendidos:p => p.estado === 'SUSPENDIDO', rechazados:p => p.estado === 'RECHAZADO'};
+  const lista = base.filter(f[filtro] || f.todos).filter(coincide);
+  const viajesDe = id => viajes.filter(v => v.pasajero_id === id && v.estado === 'COMPLETADO').length;
+  const op = [['todos', 'Todos'], ['activos', 'Activos'], ['suspendidos', 'Suspendidos'], ['rechazados', 'Rechazados']].map(([k, l]) => [k, l, base.filter(f[k]).length]);
+  return `<div class="toolbar in">${buscador('Buscar por nombre, cédula o email…')}</div>
+    <div class="in" style="--i:1">${chips(op)}</div>
+    <div class="card in" style="--i:2"><div class="rows">${lista.length ? lista.map(p => `<button class="row" onclick="detalle('${p.id}','pasajero')">${avatar(p, 44)}
+      <div class="rowInfo"><div class="rowT">${esc(p.nombre_completo)}</div><div class="rowS">CI ${esc(p.cedula || '—')} · ${plural(viajesDe(p.id), 'viaje', 'viajes')}</div></div>
+      ${pillEstado(p.estado)}<span class="chev">${ic('chevron-right')}</span></button>`).join('') : vacio(busqueda ? 'Sin resultados' : 'No hay pasajeros en este filtro')}</div></div>`;
+}
+
+// ===== Viajes (incluye cancelaciones con su motivo) =====
 function vistaViajes(){
-  return viajes.length ? viajes.slice(0,80).map(v => `<div class="actCard">
-    <div class="actMain"><div class="actTitle">${esc(v.origen)} → ${esc(v.destino)}</div>
-      <div class="actMeta">${fechaEC(v.fecha_hora)} · ${esc(nombrePas(v.pasajero_id))} · ${fmtMoney(v.tarifa)}</div></div>
-    <span class="badge" style="background:${viajeColor(v.estado)}1A;color:${viajeColor(v.estado)}">${esc(v.estado)}</span>
-    <button class="trash" onclick="eliminar('${v.id}','viajes')">🗑️</button></div>`).join('')
-    : `<div class="empty">No hay viajes registrados</div>`;
+  const motivo = {}; cancelaciones.forEach(c => { if (c.viaje_id && !motivo[c.viaje_id]) motivo[c.viaje_id] = c; });
+  const f = {todos:() => true, completados:v => v.estado === 'COMPLETADO', curso:v => v.estado === 'EN CURSO' || v.estado === 'SOLICITADO', cancelados:v => v.estado === 'CANCELADO'};
+  const q = busqueda.trim().toLowerCase();
+  const lista = viajes.filter(f[filtro] || f.todos).filter(v => !q || [v.origen, v.destino, nombre(pasajeros, v.pasajero_id), nombre(conductores, v.conductor_id)].some(x => String(x || '').toLowerCase().includes(q)));
+  const op = [['todos', 'Todos'], ['completados', 'Completados'], ['curso', 'En curso'], ['cancelados', 'Cancelados']].map(([k, l]) => [k, l, viajes.filter(f[k]).length]);
+  const filas = lista.slice(0, 150).map(v => {
+    const m = motivo[v.id];
+    return `<tr><td><div style="display:flex;align-items:center;gap:10px"><img class="veh" style="width:34px;height:34px" src="${vehiculo(v.tipo_vehiculo).img}" alt="">
+        <div><div style="font-weight:700">${esc(v.origen || 'Origen')} → ${esc(v.destino)}</div>
+        ${m ? `<div class="muted" style="white-space:normal;max-width:360px">Canceló el ${m.cancelado_por === 'conductor' ? 'conductor' : 'pasajero'}: “${esc(m.motivo)}”</div>` : ''}</div></div></td>
+      <td>${esc(nombre(pasajeros, v.pasajero_id))}</td><td>${esc(nombre(conductores, v.conductor_id))}</td>
+      <td class="muted">${cuando(v.fecha_hora)}</td><td class="amt">${money(v.tarifa)}</td><td>${pillViaje(v.estado)}</td>
+      <td style="text-align:right">${conRuta(v) ? `<button class="btn ${v.estado === 'EN CURSO' ? 'pri' : 'soft'} sm" onclick="verRuta('${v.id}')">${ic('map-pinned')} ${v.estado === 'EN CURSO' ? 'En vivo' : 'Ruta'}</button>` : ''}</td></tr>`;
+  }).join('');
+  return `<div class="toolbar in">${buscador('Buscar por lugar, pasajero o conductor…')}</div>
+    <div class="in" style="--i:1">${chips(op)}</div>
+    <div class="card tableWrap in" style="--i:2">${lista.length ? `<table><thead><tr><th>Ruta</th><th>Pasajero</th><th>Conductor</th><th>Fecha</th><th>Tarifa</th><th>Estado</th><th></th></tr></thead><tbody>${filas}</tbody></table>
+      ${lista.length > 150 ? `<div class="muted" style="padding:12px 14px">Mostrando 150 de ${lista.length}. Usa la búsqueda para encontrar uno específico.</div>` : ''}` : vacio('No hay viajes en este filtro')}</div>`;
 }
 
-function vistaCancelaciones(){
-  return cancelaciones.length ? cancelaciones.map(c => `<div class="itemCard">
-    <div class="cancelHeader">
-      <span class="badge" style="background:${c.cancelado_por==='conductor'?'#FF8A001A':'#2563EB1A'};color:${c.cancelado_por==='conductor'?'var(--orange)':'var(--blue)'}">${c.cancelado_por==='conductor'?'Conductor':'Pasajero'}</span>
-      <span class="actMeta">${horaEC(c.fecha_hora)}</span></div>
-    <div style="font-size:14px;font-weight:600">“${esc(c.motivo)}”</div>
-    <div class="actMeta">Pasajero: ${esc(c.pasajero_nombre||'—')} · Conductor: ${esc(c.conductor_nombre||'—')}</div>
-    ${c.viaje?`<div class="actMeta">${esc(c.viaje.origen||'Ubicación')} → ${esc(c.viaje.destino)}</div>`:''}</div>`).join('')
-    : `<div class="empty">No hay cancelaciones</div>`;
+// ===== Suscripciones =====
+function suscripciones(){
+  const activos = conductores.filter(c => c.estado === 'APROBADO');
+  const por = k => activos.filter(c => suscripcion(c).clave === k);
+  const pagosOk = pagos.filter(p => p.estado === 'PAGADO');
+  const suma = a => a.reduce((s, p) => s + Number(p.monto || 0), 0);
+  const ing30 = suma(enVentana(pagosOk, 'fecha', hace(30), Date.now()));
+  const ingPrev = suma(enVentana(pagosOk, 'fecha', hace(60), hace(30)));
+  const vigentes = activos.filter(c => ['activa', 'porVencer'].includes(suscripcion(c).clave));
+
+  const f = {todos:() => true, vencida:c => suscripcion(c).clave === 'vencida', porVencer:c => suscripcion(c).clave === 'porVencer', activa:c => suscripcion(c).clave === 'activa'};
+  const lista = activos.filter(f[filtro] || f.todos).sort((a, b) => ts(a.suscripcion_vence) - ts(b.suscripcion_vence));
+  const op = [['todos', 'Todas'], ['vencida', 'Vencidas'], ['porVencer', 'Por vencer'], ['activa', 'Al día']].map(([k, l]) => [k, l, activos.filter(f[k]).length]);
+
+  const filas = lista.map(c => {
+    const s = suscripcion(c), p = PLANES[planDe(c)];
+    return `<tr><td><div style="display:flex;align-items:center;gap:10px">${avatar(c, 34)}<div><div style="font-weight:700">${esc(c.nombre_completo)}</div><div class="muted">${vehiculo(c.tipo_vehiculo).nombre} · ${esc(c.placa || '—')}</div></div></div></td>
+      <td>${pill(p.nombre, p.color)}</td><td>${pill(s.txt, s.color)}</td><td class="muted">${fFecha(c.suscripcion_vence)}</td><td class="amt">${money(p.precio)}</td>
+      <td style="text-align:right"><button class="btn ${s.clave === 'activa' ? 'soft' : 'ok'} sm" onclick="activarPlan('${c.id}','renovar')">${ic('rotate-cw')} Renovar</button></td></tr>`;
+  }).join('');
+
+  const txs = pagos.slice(0, 8).map(p => {
+    const c = conductores.find(x => x.id === p.conductor_id), pl = PLANES[p.plan];
+    return `<div class="row">${avatar(c, 36)}<div class="rowInfo"><div class="rowT">${esc(c?.nombre_completo || 'Conductor eliminado')}</div>
+      <div class="rowS">${pl ? pl.nombre : esc(p.plan || '—')} · ${cuando(p.fecha)}</div></div><div class="amt">${money(p.monto)}</div></div>`;
+  }).join('');
+
+  return `<div class="grid4">
+      ${kpi(0, 'wallet', '#16A34A', ing30, 'Ingresos (30 días)', ingPrev ? variacion(ing30, ingPrev) : 'Pagos registrados', true)}
+      ${kpi(1, 'badge-check', '#2563EB', vigentes.length, 'Suscripciones al día', `de ${plural(activos.length, 'conductor activo', 'conductores activos')}`)}
+      ${kpi(2, 'clock', '#D97706', por('porVencer').length, 'Vencen en ≤ 3 días', 'Avisa para renovar')}
+      ${kpi(3, 'alert-triangle', '#DC2626', por('vencida').length, 'Vencidas', 'Renueva al recibir el pago')}
+    </div>
+    <div class="in" style="--i:4">${chips(op)}</div>
+    <div class="card tableWrap in" style="--i:5">${lista.length ? `<table><thead><tr><th>Conductor</th><th>Plan</th><th>Estado</th><th>Vence</th><th>Monto</th><th></th></tr></thead><tbody>${filas}</tbody></table>` : vacio('Nada en este filtro', '', 'assets/completado.json')}</div>
+    <div class="grid2">
+      <div class="card pad in" style="--i:6"><div class="head"><h3>Ingresos por día</h3><span class="muted">Últimos 30 días</span></div><div class="chart" style="height:220px"><canvas id="gIngresos"></canvas></div></div>
+      <div class="card pad in" style="--i:7"><div class="head"><h3>Últimos pagos</h3></div><div class="rows">${txs || vacio('Aún no hay pagos')}</div></div>
+    </div>`;
+}
+function graficoIngresos(){
+  const ctx = $('gIngresos'); if (!ctx) return; estiloGraficos();
+  const s = serieDias(30, d => pagos.filter(p => p.estado === 'PAGADO' && diaEC(p.fecha) === d).reduce((t, p) => t + Number(p.monto || 0), 0));
+  charts.push(new Chart(ctx, {type:'bar', data:{labels:s.labels, datasets:[{label:'Ingresos', data:s.data, backgroundColor:'#22C55E', borderRadius:6, maxBarThickness:18}]},
+    options:{responsive:true, maintainAspectRatio:false, animation:{duration:800, easing:'easeOutQuart'}, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c => money(c.raw)}}},
+      scales:{y:{beginAtZero:true, ticks:{callback:v => '$' + v}, grid:{color:'#EEF2F7'}, border:{display:false}}, x:{grid:{display:false}, ticks:{maxTicksLimit:8}}}}}));
 }
 
-function vistaProximamente(){
-  const n = NAV.find(x=>x.k===tab) || {l:'Sección', ic:'🚧'};
-  return `<div class="soonBox"><div class="em">${n.ic}</div>
-    <div class="t">${esc(n.l)} · Próximamente</div>
-    <div class="d">Esta sección todavía no está disponible.</div></div>`;
+// ===== Soporte: lista + chat en dos paneles =====
+function conversaciones(){
+  const g = {};
+  soporte.forEach(m => {
+    const tipo = m.pasajero_id ? 'pasajero' : 'conductor', id = m.pasajero_id || m.conductor_id; if (!id) return;
+    (g[tipo + ':' + id] ??= {tipo, id, msgs:[]}).msgs.push(m);
+  });
+  return Object.values(g).map(c => ({...c, ultimo:c.msgs[c.msgs.length - 1],
+    noLeidos:c.msgs.filter(m => m.remitente !== 'admin' && !m.leido_admin).length,
+    persona:(c.tipo === 'conductor' ? conductores : pasajeros).find(x => x.id === c.id)})).sort((a, b) => ts(b.ultimo.fecha) - ts(a.ultimo.fecha));
+}
+function vistaSoporte(){
+  const convs = conversaciones();
+  if (!convs.length) return `<div class="card in">${vacio('Sin conversaciones', 'Los mensajes de soporte de la app aparecerán aquí.')}</div>`;
+  const lista = convs.map(c => `<button class="row conv ${chat && chat.id === c.id ? 'on' : ''}" onclick="abrirChat('${c.tipo}','${c.id}')">${avatar(c.persona, 42)}
+    <div class="rowInfo"><div class="rowT">${esc(c.persona?.nombre_completo || (c.tipo === 'conductor' ? 'Conductor' : 'Pasajero'))}</div>
+      <div class="rowS"><b style="color:${c.tipo === 'conductor' ? '#2563EB' : '#16A34A'}">${c.tipo === 'conductor' ? 'Conductor' : 'Pasajero'}</b> · ${c.ultimo.remitente === 'admin' ? 'Tú: ' : ''}${esc(c.ultimo.texto)}</div></div>
+    <div class="rowR"><div class="muted">${cuando(c.ultimo.fecha).replace('Hoy, ', '')}</div>${c.noLeidos ? `<span class="navBadge" style="margin-top:4px">${c.noLeidos}</span>` : ''}</div></button>`).join('');
+  const c = chat && convs.find(x => x.id === chat.id && x.tipo === chat.tipo);
+  const panel = c ? `<div class="chatHead"><button class="btn soft sm back" onclick="chat=null;render()">${ic('arrow-left')}</button>${avatar(c.persona, 38)}
+      <div style="flex:1;min-width:0"><div style="font-weight:800">${esc(c.persona?.nombre_completo || 'Usuario')}</div><div class="muted">${c.tipo === 'conductor' ? 'Conductor · ' + (PLANES[c.persona?.plan]?.nombre || 'sin plan') : 'Pasajero'}</div></div>
+      ${c.persona ? `<button class="btn soft sm" onclick="detalle('${c.id}','${c.tipo}')">${ic('user')} Perfil</button>` : ''}</div>
+    <div class="chatBody" id="chatBody">${c.msgs.map(m => `<div class="msg ${m.remitente === 'admin' ? 'mio' : 'otro'}">${esc(m.texto)}<small>${cuando(m.fecha)}</small></div>`).join('')}</div>
+    <form class="chatIn" onsubmit="event.preventDefault();responder()"><input id="chatTxt" placeholder="Escribe una respuesta…" autocomplete="off"><button class="btn pri" type="submit">${ic('send')}</button></form>`
+    : `<div style="flex:1;display:flex;align-items:center;justify-content:center">${vacio('Elige una conversación', 'Selecciona un chat de la izquierda para responder.')}</div>`;
+  return `<div class="card soporte ${c ? 'abierto' : ''} in"><div class="convs rows">${lista}</div><div class="chat">${panel}</div></div>`;
+}
+async function abrirChat(tipo, id){
+  chat = {tipo, id}; render(); $('chatTxt')?.focus();
+  const col = tipo === 'pasajero' ? 'pasajero_id' : 'conductor_id';
+  if (soporte.some(m => m[col] === id && m.remitente === tipo && !m.leido_admin)) {
+    soporte = soporte.map(m => m[col] === id && m.remitente === tipo ? {...m, leido_admin:true} : m); render();
+    await sb.from('soporte_mensajes').update({leido_admin:true}).eq(col, id).eq('remitente', tipo).eq('leido_admin', false);
+  }
+}
+async function responder(){
+  const inp = $('chatTxt'), t = inp?.value.trim(); if (!t || !chat) return;
+  inp.value = '';
+  const fila = chat.tipo === 'pasajero' ? {pasajero_id:chat.id, remitente:'admin', texto:t} : {conductor_id:chat.id, remitente:'admin', texto:t};
+  const {error} = await sb.from('soporte_mensajes').insert(fila);
+  if (error) { inp.value = t; return toast('No se pudo enviar: ' + error.message, true); }
+  recargarSoporte();
 }
 
-function irTab(k){ tab=k; busqueda=''; toggleSidebar(false); render(); }
-
-// --- modal detalle ---
-async function abrirDetalle(id, tipo){
-  const lista = tipo==='conductor' ? conductores : pasajeros;
-  const u = lista.find(x => x.id === id);
-  if (!u) return;
-  const esC = tipo==='conductor';
-  const s = esC ? infoSuscripcion(u.suscripcion_vence) : null;
-  const st = (esC?stats.conductor:stats.pasajero)[u.id] || {total:0,completados:0};
-
-  // cédulas: nuevas en bucket privado (URL firmada), viejas son http público
-  const resolver = async v => { if(!v)return null; if(v.startsWith('http'))return v;
-    const {data} = await sb.storage.from('cedulas').createSignedUrl(v, 300); return data?.signedUrl||null; };
-  const [front, post] = await Promise.all([resolver(u.cedula_frontal_url), resolver(u.cedula_posterior_url)]);
-
-  const foto = (uri,label,emoji,perfil) => {
-    const cls = perfil?'perfilImg':'img';
-    const inner = uri ? `<img class="${cls}" src="${esc(uri)}" onclick="window.open('${esc(uri)}','_blank')" style="cursor:pointer">`
-      : `<div class="${cls}">${emoji}</div>`;
-    return `<div class="foto">${inner}<div class="lbl">${label}</div></div>`;
-  };
-  const dato = (k,v) => `<div class="datoRow"><span class="datoK">${k}</span><span class="datoV">${esc(v||'—')}</span></div>`;
+// ===== Detalle de usuario =====
+async function detalle(id, tipo){
+  const esC = tipo === 'conductor', u = (esC ? conductores : pasajeros).find(x => x.id === id); if (!u) return;
+  // Cédulas: nuevas en bucket privado (URL firmada 5 min); antiguas, URL http pública.
+  const firmar = async v => !v ? null : v.startsWith('http') ? v : (await sb.storage.from('cedulas').createSignedUrl(v, 300)).data?.signedUrl || null;
+  const [frontal, posterior] = esC ? await Promise.all([firmar(u.cedula_frontal_url), firmar(u.cedula_posterior_url)]) : [];
+  const foto = (url, label) => `<div class="foto">${url ? `<img src="${esc(url)}" alt="" onclick="verImagen(this.src)">` : ic('image-off', 'style="width:26px;height:26px"')}<span>${label}</span></div>`;
+  const dato = (k, v) => `<div class="dato"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  const hechos = viajes.filter(v => (esC ? v.conductor_id : v.pasajero_id) === id);
+  const comp = hechos.filter(v => v.estado === 'COMPLETADO').length;
+  const notas = esC ? hechos.filter(v => v.calificacion_conductor != null).map(v => v.calificacion_conductor) : [];
+  const s = esC ? suscripcion(u) : null, p = esC ? PLANES[planDe(u)] : null;
+  const ultimoViaje = hechos.find(conRuta); // los viajes vienen del más reciente al más antiguo
 
   let acc = '';
-  if (u.estado!=='APROBADO') acc += esC
-    ? `<button class="accionBtn bAprobar" onclick="modalPlan('${u.id}','aprobar')">✓ Aprobar</button>`
-    : `<button class="accionBtn bAprobar" onclick="cambiarEstadoPasajero(window._u,'APROBADO')">✓ Aprobar</button>`;
-  if (u.estado!=='RECHAZADO') acc += `<button class="accionBtn bRechazar" onclick="${esC?`cambiarEstadoConductor`:`cambiarEstadoPasajero`}(window._u,'RECHAZADO')">✗ Rechazar</button>`;
-  if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bRenovar" onclick="modalPlan('${u.id}','renovar')">🔄 Renovar</button>`;
-  if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bCambiar" onclick="modalPlan('${u.id}','cambiar')">🔁 Cambiar plan</button>`;
-  if (esC && u.estado==='APROBADO') acc += `<button class="accionBtn bSuspender" onclick="cambiarEstadoConductor(window._u,'SUSPENDIDO')">⏸ Suspender</button>`;
-  acc += `<button class="accionBtn bEliminar" onclick="eliminar(window._u.id,'${esC?'conductores':'pasajeros'}')">🗑️ Eliminar</button>`;
+  if (u.estado === 'PENDIENTE') acc = esC
+    ? `<button class="btn ok" onclick="activarPlan('${id}','aprobar')">${ic('check')} Aprobar · ${money(p.precio)}</button><button class="btn danger" onclick="cambiarEstado('${id}','${tipo}','RECHAZADO')">${ic('x')} Rechazar</button>`
+    : `<button class="btn ok" onclick="cambiarEstado('${id}','${tipo}','APROBADO')">${ic('check')} Aprobar</button><button class="btn danger" onclick="cambiarEstado('${id}','${tipo}','RECHAZADO')">${ic('x')} Rechazar</button>`;
+  else if (u.estado === 'APROBADO') acc = (esC ? `<button class="btn ok" onclick="activarPlan('${id}','renovar')">${ic('rotate-cw')} Renovar 1 mes</button>` : '')
+    + `<button class="btn warn" onclick="cambiarEstado('${id}','${tipo}','SUSPENDIDO')">${ic('pause')} Suspender</button>`;
+  else acc = `<button class="btn ok" onclick="cambiarEstado('${id}','${tipo}','APROBADO')">${ic('play')} Reactivar</button>`;
 
-  const r = esC ? ratingCond(u.id) : null;
-  window._u = u;
-  $('modalRoot').innerHTML = `<div class="backdrop" onclick="if(event.target===this)cerrarModal()"><div class="sheet">
-    <div class="modalTop">${avatar(u.foto_perfil_url,u.nombre_completo,56)}
-      <div style="flex:1"><div class="modalName">${esc(u.nombre_completo)}</div><div class="modalRole">${esC?'Conductor':'Pasajero'}</div></div>
-      <span class="badge" style="background:${estadoColor(u.estado)}1A;color:${estadoColor(u.estado)}">${esc(u.estado)}</span></div>
-    <div class="fotosRow">${foto(u.foto_perfil_url,'Perfil','👤',true)}${esC?foto(u.foto_vehiculo_url,'Vehículo','🚗'):''}</div>
-    <div class="fotosRow">${foto(front,'Cédula frontal','🪪')}${foto(post,'Cédula posterior','🪪')}</div>
-    ${esC && u.foto_perfil_pendiente ? `<div class="fotoPend">
-      <div class="fotoPendTit">📷 Nueva foto de perfil · pendiente de aprobación</div>
-      <div class="fotosRow">${foto(u.foto_perfil_pendiente,'Nueva foto','👤',true)}</div>
-      <div class="acciones">
-        <button class="accionBtn bAprobar" onclick="resolverFotoPendiente('${u.id}',true)">✓ Aprobar foto</button>
-        <button class="accionBtn bRechazar" onclick="resolverFotoPendiente('${u.id}',false)">✗ Rechazar</button>
-      </div></div>` : ''}
-    <div class="datos">
-      ${esC?dato('Placa',u.placa):''}
-      ${dato('Cédula',u.cedula)}${dato('Email',u.email)}
-      ${dato('Registrado',fechaEC(u.fecha_registro))}
-      ${dato('Viajes',`${st.completados} completados · ${st.total} en total`)}
-      ${esC?dato('Calificación', r?`⭐ ${r}`:'Sin calificaciones'):''}
-      ${esC&&planInfo(u.plan)?`<div class="datoRow"><span class="datoK">Plan</span><span class="planBadge" style="background:${planInfo(u.plan).color}1A;color:${planInfo(u.plan).color}">${planInfo(u.plan).nombre} · ${fmtMoney(planInfo(u.plan).precio)}/mes</span></div>`:''}
-      ${esC&&s?`<div class="datoRow"><span class="datoK">Suscripción</span><span class="badge" style="background:${s.color}1A;color:${s.color}">${s.texto}</span></div>`:''}
-    </div>
-    <div class="acciones">${acc}</div>
-    <button class="cerrar" onclick="cerrarModal()">Cerrar</button>
-  </div></div>`;
+  $('modal').innerHTML = `<div class="backdrop" onclick="if(event.target===this)cerrarModal()"><div class="sheet">
+    <div class="sheetHead">${u.foto_perfil_url ? `<button class="avBtn" onclick="verImagen('${esc(u.foto_perfil_url)}')" title="Ver foto">${avatar(u, 56)}</button>` : avatar(u, 56)}<div style="min-width:0"><div style="font-size:18px;font-weight:900">${esc(u.nombre_completo)}</div>
+      <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">${pillEstado(u.estado)}${esC ? pill(vehiculo(u.tipo_vehiculo).nombre, '#2563EB') : pill('Pasajero', '#16A34A')}</div></div>
+      <button class="x" onclick="cerrarModal()">${ic('x')}</button></div>
+    <div class="sheetBody">
+      ${esC ? `<div class="fotos">${foto(u.foto_perfil_url, 'Perfil')}${foto(u.foto_vehiculo_url, 'Vehículo')}${foto(frontal, 'Cédula frontal')}${foto(posterior, 'Cédula posterior')}</div>` : ''}
+      <div class="datos">
+        ${esC ? dato('Placa', esc(u.placa || '—')) : ''}${dato('Cédula', esc(u.cedula || '—'))}${dato('Email', esc(u.email || '—'))}
+        ${dato('Registrado', fFecha(u.fecha_registro))}${dato('Viajes', `${comp} completados · ${hechos.length} en total`)}
+        ${esC ? dato('Calificación', notas.length ? `⭐ ${(notas.reduce((a, b) => a + b, 0) / notas.length).toFixed(1)} (${notas.length})` : 'Sin calificaciones') : ''}
+        ${esC ? dato('Plan', `${p.nombre} · ${money(p.precio)}/mes`) : ''}
+        ${esC && u.estado === 'APROBADO' ? dato('Suscripción', pill(s.txt, s.color)) : ''}
+      </div>
+      ${ultimoViaje ? `<button class="btn soft full" onclick="verRuta('${ultimoViaje.id}')">${ic('map-pinned')} Últimos movimientos <span class="muted">(${cuando(ultimoViaje.fecha_hora)})</span></button>` : ''}
+      <div class="acciones">${acc}</div>
+      <div class="peligro"><div><b>Eliminar cuenta</b><span>Borra al usuario de forma permanente.</span></div>
+        <button class="btn danger sm" onclick="eliminarUsuario('${id}','${tipo}')">${ic('trash-2')} Eliminar</button></div>
+    </div></div></div>`;
+  lucide.createIcons();
 }
-function cerrarModal(){ $('modalRoot').innerHTML=''; }
+function cerrarModal(){ clearInterval(rutaTimer); $('modal').innerHTML = ''; }
+
+// ===== Ruta del viaje (rastro de seguridad, se guarda 7 días) =====
+const conRuta = v => v.estado !== 'SOLICITADO' && ts(v.fecha_hora) > hace(7);
+const COLOR_ROL = {conductor:'#2563EB', pasajero:'#16A34A'};
+const haceTxt = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'hace segundos' : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`; };
+const gmaps = (lat, lng) => `https://www.google.com/maps?q=${lat},${lng}`;
+let rutaTimer = null;
+
+function verRuta(viajeId){
+  const v = viajes.find(x => x.id === viajeId); if (!v) return;
+  clearInterval(rutaTimer);
+  $('modal').innerHTML = `<div class="backdrop" onclick="if(event.target===this)cerrarModal()"><div class="sheet ruta">
+    <div class="sheetHead"><div class="kpiIc" style="background:#DC262614;color:#DC2626">${ic('map-pinned')}</div>
+      <div style="min-width:0"><div style="font-size:17px;font-weight:900">${esc(v.origen || 'Origen')} → ${esc(v.destino)}</div>
+        <div class="muted">${esc(nombre(pasajeros, v.pasajero_id))} (pasajero) · ${esc(nombre(conductores, v.conductor_id))} (conductor) · ${cuando(v.fecha_hora)}</div></div>
+      <button class="x" onclick="cerrarModal()">${ic('x')}</button></div>
+    <div id="mapa" class="mapa"></div>
+    <div class="sheetBody" id="rutaInfo"><div class="sk" style="height:56px"></div></div></div></div>`;
+  lucide.createIcons();
+  const mapa = L.map('mapa').setView([-1.84567, -79.96503], 14); // Montalvo
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(mapa);
+  const capa = L.layerGroup().addTo(mapa);
+  let encuadrado = false;
+  const marca = (lat, lng, color) => L.marker([lat, lng], {icon:L.divIcon({className:'', html:`<div class="pulso" style="background:${color};--c:${color}99"></div>`, iconSize:[18, 18]})});
+  const linkMaps = (lat, lng) => `<a class="btn soft sm" target="_blank" rel="noopener" href="${gmaps(lat, lng)}">${ic('external-link')} Google Maps</a>`;
+
+  const pintar = async () => {
+    const {data, error} = await sb.from('viaje_rastro').select('rol,lat,lng,fecha').eq('viaje_id', viajeId).order('fecha');
+    if (!$('mapa')) return clearInterval(rutaTimer);
+    if (error) { $('rutaInfo').innerHTML = `<div class="muted">No se pudo cargar el rastro: ${esc(error.message)}</div>`; return; }
+    capa.clearLayers();
+    const limites = [], filas = [];
+    for (const rol of ['conductor', 'pasajero']) {
+      const pts = (data || []).filter(x => x.rol === rol), c = COLOR_ROL[rol];
+      const titulo = `<b>${rol === 'conductor' ? 'Conductor' : 'Pasajero'}</b> · ${esc(nombre(rol === 'conductor' ? conductores : pasajeros, rol === 'conductor' ? v.conductor_id : v.pasajero_id))}`;
+      if (!pts.length) { filas.push(`<div class="rastro"><span class="punto" style="background:#CBD5E1"></span><div>${titulo}<div class="muted">Sin puntos registrados</div></div></div>`); continue; }
+      const linea = pts.map(x => [x.lat, x.lng]); limites.push(...linea);
+      L.polyline(linea, {color:c, weight:5, opacity:.85, lineJoin:'round'}).addTo(capa);
+      L.marker(linea[0], {icon:L.divIcon({className:'', html:`<div class="inicio" style="--c:${c}"></div>`, iconSize:[12, 12]})})
+        .bindTooltip(`Inicio (${rol}) · ${cuando(pts[0].fecha)}`).addTo(capa);
+      const u = pts[pts.length - 1];
+      marca(u.lat, u.lng, c).bindTooltip(`Última posición (${rol}) · ${cuando(u.fecha)}`).addTo(capa);
+      filas.push(`<div class="rastro"><span class="punto" style="background:${c}"></span>
+        <div>${titulo}<div class="muted">${pts.length} puntos · último ${cuando(u.fecha)} (${haceTxt(ts(u.fecha))})</div></div>${linkMaps(u.lat, u.lng)}</div>`);
+    }
+    // Sin rastro: usa la última posición guardada en el viaje (versiones anteriores de la app).
+    if (!limites.length && v.ultima_lat != null) {
+      limites.push([v.ultima_lat, v.ultima_lng]);
+      marca(v.ultima_lat, v.ultima_lng, '#DC2626').addTo(capa);
+      filas.unshift(`<div class="rastro"><span class="punto" style="background:#DC2626"></span><div><b>Última posición conocida del viaje</b><div class="muted">${cuando(v.ultima_ubicacion_at)}</div></div>${linkMaps(v.ultima_lat, v.ultima_lng)}</div>`);
+    }
+    if (limites.length && !encuadrado) { mapa.fitBounds(limites, {padding:[40, 40], maxZoom:17}); encuadrado = true; }
+    $('rutaInfo').innerHTML = `${v.estado === 'EN CURSO' ? '<span class="vivo">EN VIVO · se actualiza cada 15 s</span>' : ''}${filas.join('')}
+      <div class="muted">${ic('shield', 'style="width:14px;height:14px;vertical-align:-2px"')} Solo se registra durante el viaje en curso y se borra automáticamente a los 7 días.</div>`;
+    lucide.createIcons();
+  };
+  pintar();
+  if (v.estado === 'EN CURSO') rutaTimer = setInterval(pintar, 15000);
+  setTimeout(() => mapa.invalidateSize(), 350); // el modal termina de animarse
+}
 </script>
 </body>
 </html>
